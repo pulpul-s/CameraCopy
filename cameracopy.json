@@ -1,6 +1,6 @@
 {
     "source": "DCIM\\",
-    "destination": "H:\\copytest_dest",
+    "destination": "D:\\Pictures\\",
     "includedfiles": [
         "*.arw",
         "*.mp4"
