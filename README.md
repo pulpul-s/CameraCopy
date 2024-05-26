@@ -32,3 +32,6 @@ Remember to escape backslashes('\') in the json by using double backslashes ('\\
     "formatprompt": true                <- Prompt before formatting, set to false if you want to format without confirmation (dangerous).
 }
 ```
+
+### Notes
+Does not support MTP devices. Devices must have an assigned volume letter.
