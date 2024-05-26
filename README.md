@@ -8,10 +8,10 @@ A straightforward Powershell GUI tool for copying files from memory card or came
 ## Configuration
 
 Edit the cameracopy.json file as you please.<br>
-Copy source will always be '{selectedDrive}:\{source}\' e.g. 'F:\DCIM\'<br>
-Copy destination will always be '{destination}\{datetimestring}\' e.g. 'D:\Pictures\2024-01-01\'<br>
+Copy source will always be '{selectedDrive}:\\{source}\\' e.g. 'F:\DCIM\'<br>
+Copy destination will always be '{destination}\\{datetimestring}\\' e.g. 'D:\Pictures\2024-01-01\'<br>
 Do not add a leading drive to source e.g. 'D:\\DCIM\\'<br>
-Remember to escape backslashes('\') in the json by using double backslashes ('\\')<br>
+Remember to escape backslashes('\\') in the json by using double backslashes ('\\\\')<br>
 ```json
 {
     "source": "DCIM\\",                 <- Source folder of images, does not have to be set. Will only use volume letter if not set.
