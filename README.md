@@ -2,7 +2,7 @@
 
 A straightforward Powershell GUI tool for copying files from memory card or camera to your computer.
 
-<img src="./screenshots/1.png" width="33%" alt="Main window"><br>
+<img src="./screenshots/1.png" width="25%" alt="Main window"><br>
 <img src="./screenshots/2.png" width="500px" alt="Copy window and format confirmation">
 
 ## Configuration
