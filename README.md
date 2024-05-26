@@ -15,7 +15,7 @@ Remember to escape backslashes('\\') in the json by using double backslashes ('\
 ```json
 {
     "source": "DCIM\\",                 <- Source folder of images, does not have to be set. Will only use volume letter if not set.
-    "destination": "D:\\Pictures",
+    "destination": "D:\\Pictures",      <- Destination folder for files, must have full path.
     "includedfiles": [                  <- List of files to include in copy, cameras might have additional files. set to "*" you want to copy everything.
         "*.arw",
         "*.mp4"
