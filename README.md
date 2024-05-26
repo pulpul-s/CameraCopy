@@ -24,7 +24,7 @@ Remember to escape backslashes('\\') in the json by using double backslashes ('\
         "*thumb*",
         "ABC06591.ARW"
     ],
-    "includeddevices": [                <- Volumes included in the list. If left empty everything will be listed.
+    "includeddevices": [                <- Volume dropdown filter keywords. If left empty, all found volumes will be listed.
         "Sony",
         "DataTraveler"
     ],
