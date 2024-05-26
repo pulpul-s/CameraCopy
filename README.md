@@ -1,6 +1,6 @@
 # CameraCopy
 
-A straightforward Powershell tool for copying files from memory card or camera to your computer.
+A straightforward Powershell GUI tool for copying files from memory card or camera to your computer.
 
 ## Configuration
 
