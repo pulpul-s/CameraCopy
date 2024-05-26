@@ -144,6 +144,7 @@ function CopyFiles {
                 $totalFiles = $fileCount
                 $filesCopied = 0
                 $destinationRoot = $destinationPath
+                $hashFailFiles = @()
 
                 foreach ($file in $files) {
                     if ($syncHash.Cancel) {
@@ -175,13 +176,29 @@ function CopyFiles {
                             $filesCopied++
                             $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
                             $progressPercentage = "{0:n1}" -f $progressPercentage
-                            $syncHash.LogMessages.Add("Copied $($file.FullName) to $destinationFile ($progressPercentage % complete)`r`n")
+
+                            # Check copy integrity SHA256
+                            $hashCheck = $true
+                            if ($config.checkhash) {
+                                $sourceFileHash = (Get-FileHash -Path $file.FullName -Algorithm SHA256).Hash
+                                $destinationFileHash = (Get-FileHash -Path $destinationFile -Algorithm SHA256).Hash
+                                $hashCheck = ($sourceFileHash -eq $destinationFileHash)
+                                $syncHash.LogMessages.Add("Copied $($file.FullName) to $destinationFile ($progressPercentage % complete, SHA256 match $hashCheck)`r`n")
+                                
+                                if (-not $hashCheck) {
+                                    $hashFailFiles += $destinationFile
+                                }
+                            } 
+                            else {
+                                $syncHash.LogMessages.Add("Copied $($file.FullName) to $destinationFile ($progressPercentage % complete)`r`n")
+                            }
+                            
                         }
                         catch {
                             syncHash.LogMessages.Add("Failed to copy $($file.FullName)`r`n")
                         }
                         finally {
-                            if ($autoremove -and (Test-Path $destinationFile)) {
+                            if ($autoremove -and (Test-Path $destinationFile) -and $hashCheck) {
                                 Remove-Item -Path $file.FullName
                                 $syncHash.LogMessages.Add("Removed file $($file.FullName)`r`n")
                             }
@@ -194,6 +211,14 @@ function CopyFiles {
                         $syncHash.LogMessages.Add("$($destinationFile) exists, not replaced. ($progressPercentage % complete)`r`n")
                     }
                 }
+
+                if ($hashFailFiles -and $config.checkhash) {
+                    $syncHash.LogMessages.Add("Following files failed the hash check and their source has not been removed:`r`n")
+                    foreach ($file in $hashFailFiles) {
+                        $syncHash.LogMessages.Add("$($destinationFile)`r`n")
+                    }
+                }
+
                 $copyCompleted = $true
                 if (-not $syncHash.Cancel) {
                     $syncHash.LogMessages.Add("Files copied.`r`n")
@@ -326,14 +351,14 @@ function Main {
     $checkboxExFAT.Location = New-Object System.Drawing.Point(130, 70)
     $checkboxExFAT.AutoSize = $true
     $form.Controls.Add($checkboxExFAT)
-    if ($config.autoformat -eq "exFAT") { $checkboxFAT32.Checked = $true }
+    if ($config.autoformat -eq "exFAT") { $checkboxExFAT.Checked = $true }
 
     $checkboxNTFS = New-Object System.Windows.Forms.CheckBox
     $checkboxNTFS.Text = "NTFS"
     $checkboxNTFS.Location = New-Object System.Drawing.Point(190, 70)
     $checkboxNTFS.AutoSize = $true
     $form.Controls.Add($checkboxNTFS)
-    if ($config.autoformat -eq "NTFS") { $checkboxFAT32.Checked = $true }
+    if ($config.autoformat -eq "NTFS") { $checkboxNTFS.Checked = $true }
 
     # Function to handle checkbox clicks
     $checkboxClickHandler = {

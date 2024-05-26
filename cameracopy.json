@@ -17,5 +17,6 @@
     "defaultdevice": 0,
     "autoremove": false,
     "autoformat": "exFat",
-    "formatprompt": true
+    "formatprompt": true,
+    "checkhash": false
 }

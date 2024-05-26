@@ -33,8 +33,10 @@ Remember to escape backslashes('\\') in the json by using double backslashes ('\
     "autoremove": false,                <- Select remove files after copying on start
     "autoformat": "exFat",              <- Select format filesystem on start. Can be empty or any of FAT32, exFAT, NTFS
     "formatprompt": true                <- Prompt before formatting, set to false if you want to format without confirmation (dangerous).
+    "checkhash": false                  <- Do a SHA256 hash check fo each file after copy (slows down transfer).
 }
 ```
 
 ### Notes
-Does not support MTP devices. Devices must have an assigned volume letter.
+Does not support MTP devices. Devices must have an assigned volume letter.<br>
+SHA256 hash check should not be necessary, since USB file transfer is error correcting. However if you suspect the integrity of the file transfer you can enable the option. If a hash check fails the source files that fail the hash check will not be removed, even when auto remove is enabled.
