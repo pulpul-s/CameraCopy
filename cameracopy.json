@@ -1,0 +1,21 @@
+{
+    "source": "DCIM\\",
+    "destination": "D:\\Pictures\\",
+    "includedfiles": [
+        "*.arw",
+        "*.mp4"
+    ],
+    "excludedfiles": [
+        "*thumb*",
+        "ABC06591.ARW"
+    ],
+    "includeddevices": [
+        "Sony",
+        "DataTraveler"
+    ],
+    "datetimestring": "yyyy-MM-dd",
+    "defaultdevice": 0,
+    "autoremove": false,
+    "autoformat": "exFat",
+    "formatprompt": true
+}
