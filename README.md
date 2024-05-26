@@ -2,6 +2,9 @@
 
 A straightforward Powershell GUI tool for copying files from memory card or camera to your computer.
 
+![Main window](./screenshots/1.png)
+![Copy window and format confirmation](./screenshots/2.png)
+
 ## Configuration
 
 Edit the cameracopy.json file as you please.<br>
