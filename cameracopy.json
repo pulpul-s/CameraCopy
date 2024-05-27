@@ -13,7 +13,9 @@
         "Sony",
         "DataTraveler"
     ],
+    "folderprefix": "prefix_",
     "datetimestring": "yyyy-MM-dd",
+    "folderpostfix": "_postfix",
     "defaultdevice": 0,
     "autoremove": false,
     "autoformat": "exFAT",

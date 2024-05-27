@@ -1,5 +1,5 @@
 # https://github.com/pulpul-s/CameraCopy
-$version = "1.3.1"
+$version = "1.3.2"
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -156,10 +156,15 @@ function CopyFiles {
                     }
 
                     # Extract the creation date of the file
-                    $creationDate = $file.CreationTime.ToString($config.datetimestring)
-                
-                    # Construct the destination folder path using the creation date
-                    $destinationPath = Join-Path -Path $destinationRoot -ChildPath $creationDate
+                    if ($config.datetimestring) { 
+                        $creationDate = $file.CreationTime.ToString($config.datetimestring) 
+                    }
+
+                    # Construct the full path
+                    $childPath = $config.folderprefix + $creationDate + $config.folderpostfix
+                    
+                    # Construct the destination folder path
+                    $destinationPath = Join-Path -Path $destinationRoot -ChildPath $childPath
 
                     if (-not (Test-Path -Path $destinationPath)) {
                         New-Item -ItemType Directory -Path $destinationPath | Out-Null
