@@ -3,7 +3,7 @@
 A straightforward Powershell GUI tool for copying files from memory card or camera to your computer.<br><br>
 Scans the system for available volumes, filters the volume list by user keywords, checks file timestamps on source, creates a timestamped directory, copies files, checks sha256 hash, removes copied files and formats source volume. Does not overwrite already existing files.
 
-<img src="./screenshots/1.png" width="25%" alt="Main window"><br>
+<img src="./screenshots/1.png" alt="Main window"><br>
 <img src="./screenshots/2.png" width="500px" alt="Copy window and format confirmation">
 
 ## Configuration
