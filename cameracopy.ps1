@@ -427,7 +427,7 @@ function Main {
                 $destinationPath = $config.destination
                 $format = $null
                 if ($checkboxFAT32.Checked) { $format = "FAT32" }
-                if ($checkboxExFAT.Checked) { $format = "exFat" }
+                if ($checkboxExFAT.Checked) { $format = "exFAT" }
                 if ($checkboxNTFS.Checked) { $format = "NTFS" }
             
                 # Start copying removing formatting etc
