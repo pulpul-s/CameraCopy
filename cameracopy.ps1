@@ -183,7 +183,6 @@ function CopyFiles {
                             if ($config.checkhash) {
                                 $sourceFileHash = (Get-FileHash -Path $file.FullName -Algorithm SHA256).Hash
                                 $destinationFileHash = (Get-FileHash -Path $destinationFile -Algorithm SHA256).Hash
-                                $destinationFileHash = "feafeafaefeafeafae"
                                 $hashCheck = ($sourceFileHash -eq $destinationFileHash)
                                 $syncHash.LogMessages.Add("Copied $($file.FullName) to $destinationFile ($progressPercentage % complete, SHA256 match $hashCheck)`r`n")
                             } 
