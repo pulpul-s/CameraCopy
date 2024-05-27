@@ -164,7 +164,8 @@ function CopyFiles {
 
                     # Copy the file to the destination folder
                     $destinationFile = Join-Path -Path $destinationPath -ChildPath $file.Name
-                    if (-not (Test-Path -Path $destinationFile)) {
+
+                    if (-not (Test-Path -Path $destinationFile) -or $config.overwrite) {
                         try {
                             Copy-Item -Path $file.FullName -Destination $destinationFile -Force
                             
@@ -184,15 +185,14 @@ function CopyFiles {
                                 $destinationFileHash = (Get-FileHash -Path $destinationFile -Algorithm SHA256).Hash
                                 $hashCheck = ($sourceFileHash -eq $destinationFileHash)
                                 $syncHash.LogMessages.Add("Copied $($file.FullName) to $destinationFile ($progressPercentage % complete, SHA256 match $hashCheck)`r`n")
-                                
-                                if (-not $hashCheck) {
-                                    $hashFailFiles += $destinationFile
-                                }
                             } 
                             else {
                                 $syncHash.LogMessages.Add("Copied $($file.FullName) to $destinationFile ($progressPercentage % complete)`r`n")
                             }
-                            
+
+                            if (-not $hashCheck) {
+                                $hashFailFiles += $destinationFile
+                            }                            
                         }
                         catch {
                             syncHash.LogMessages.Add("Failed to copy $($file.FullName)`r`n")
@@ -212,16 +212,16 @@ function CopyFiles {
                     }
                 }
 
+                $copyCompleted = $true
+                if (-not $syncHash.Cancel) {
+                    $syncHash.LogMessages.Add("Files copied.`r`n")
+                }
+
                 if ($hashFailFiles -and $config.checkhash) {
                     $syncHash.LogMessages.Add("Following files failed the hash check and their source has not been removed:`r`n")
                     foreach ($file in $hashFailFiles) {
                         $syncHash.LogMessages.Add("$($destinationFile)`r`n")
                     }
-                }
-
-                $copyCompleted = $true
-                if (-not $syncHash.Cancel) {
-                    $syncHash.LogMessages.Add("Files copied.`r`n")
                 }
 
                 $verifyFormat = $null

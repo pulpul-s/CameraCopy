@@ -34,7 +34,8 @@ Remember to escape backslashes('\\') in the json by using double backslashes ('\
     "autoremove": false,                <- Select remove files after copying on start
     "autoformat": "exFat",              <- Select format filesystem on start. Can be empty or any of FAT32, exFAT, NTFS
     "formatprompt": true,               <- Prompt before formatting, set to false if you want to format without confirmation (dangerous).
-    "checkhash": false                  <- When true, do a SHA256 hash check fo each file after copy (slows down transfer).
+    "checkhash": false,                 <- When true, do a SHA256 hash check fo each file after copy (slows down transfer).
+    "overwrite": false                  <- Overwrite existing files
 }
 ```
 

@@ -18,5 +18,6 @@
     "autoremove": false,
     "autoformat": "exFat",
     "formatprompt": true,
-    "checkhash": false
+    "checkhash": false,
+    "overwrite": false
 }
