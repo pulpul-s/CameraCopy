@@ -40,6 +40,7 @@ Remember to escape backslashes('\\') in the json by using double backslashes ('\
 ```
 
 ### Notes
+* autoformat and autoremove only affect which option is default in the gui.
 * Does not support MTP devices. Devices must have an assigned volume letter.
 * SHA256 hash check should not be necessary, since USB file transfer is error correcting. However if you suspect the integrity of the file transfer, you can enable the option. If a hash check fails, the source files that fail the hash check will not be removed, even when auto remove is enabled.
 * If you choose to delete files that failed the hash check, just run copy again without overwrite.
