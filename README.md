@@ -1,6 +1,7 @@
 # CameraCopy
 
-A straightforward Powershell GUI tool for copying files from memory card or camera to your computer.
+A straightforward Powershell GUI tool for copying files from memory card or camera to your computer.<br><br>
+Scans the system for available volumes, filters the volume list by user keywords, checks file timestamps on source, creates a timestamped directory, copies files, checks sha256 hash, removes copied files and formats source volume. Does not overwrite already existing files.
 
 <img src="./screenshots/1.png" width="25%" alt="Main window"><br>
 <img src="./screenshots/2.png" width="500px" alt="Copy window and format confirmation">
@@ -32,7 +33,7 @@ Remember to escape backslashes('\\') in the json by using double backslashes ('\
     "defaultdevice": 0,                 <- If you know your device is always e.g. second on the list set to 1.
     "autoremove": false,                <- Select remove files after copying on start
     "autoformat": "exFat",              <- Select format filesystem on start. Can be empty or any of FAT32, exFAT, NTFS
-    "formatprompt": true,                <- Prompt before formatting, set to false if you want to format without confirmation (dangerous).
+    "formatprompt": true,               <- Prompt before formatting, set to false if you want to format without confirmation (dangerous).
     "checkhash": false                  <- When true, do a SHA256 hash check fo each file after copy (slows down transfer).
 }
 ```
