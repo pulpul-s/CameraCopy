@@ -16,7 +16,7 @@
     "datetimestring": "yyyy-MM-dd",
     "defaultdevice": 0,
     "autoremove": false,
-    "autoformat": "exFat",
+    "autoformat": "exFAT",
     "formatprompt": true,
     "checkhash": true,
     "overwrite": false

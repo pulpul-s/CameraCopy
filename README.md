@@ -32,7 +32,7 @@ Remember to escape backslashes('\\') in the json by using double backslashes ('\
     "datetimestring": "yyyy-MM-dd",     <- Powershell datetime string. yyyy-MM-dd meaning 2024-01-01.
     "defaultdevice": 0,                 <- If you know your device is always e.g. second on the list set to 1.
     "autoremove": false,                <- Select remove files after copying on start
-    "autoformat": "exFat",              <- Select format filesystem on start. Can be empty or any of FAT32, exFAT, NTFS
+    "autoformat": "exFAT",              <- Select format filesystem on start. Can be empty or any of FAT32, exFAT, NTFS
     "formatprompt": true,               <- Prompt before formatting, set to false if you want to format without confirmation (dangerous).
     "checkhash": true,                  <- When true, do a SHA256 hash check fo each file after copy (slows down process).
     "overwrite": false                  <- Overwrite existing files
