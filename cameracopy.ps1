@@ -183,6 +183,7 @@ function CopyFiles {
                             if ($config.checkhash) {
                                 $sourceFileHash = (Get-FileHash -Path $file.FullName -Algorithm SHA256).Hash
                                 $destinationFileHash = (Get-FileHash -Path $destinationFile -Algorithm SHA256).Hash
+                                $destinationFileHash = "feafeafaefeafeafae"
                                 $hashCheck = ($sourceFileHash -eq $destinationFileHash)
                                 $syncHash.LogMessages.Add("Copied $($file.FullName) to $destinationFile ($progressPercentage % complete, SHA256 match $hashCheck)`r`n")
                             } 
@@ -217,10 +218,24 @@ function CopyFiles {
                     $syncHash.LogMessages.Add("Files copied.`r`n")
                 }
 
+                $verifyHashFailDelete = $null
                 if ($hashFailFiles -and $config.checkhash) {
-                    $syncHash.LogMessages.Add("Following files failed the hash check and their source has not been removed:`r`n")
+                    $syncHash.LogMessages.Add("Following files($($hashFailFiles.Count)) failed the hash check and their source has not been removed:`r`n")
                     foreach ($file in $hashFailFiles) {
-                        $syncHash.LogMessages.Add("$($destinationFile)`r`n")
+                        $syncHash.LogMessages.Add("$($file)`r`n")
+                    }
+                    $verifyHashFailDelete = [System.Windows.Forms.MessageBox]::Show("Do you want to delete the files that failed the hash check?`r`n", "Delete confirmation", [System.Windows.Forms.MessageBoxButtons]::YesNo)
+                }
+
+                if ($verifyHashFailDelete -eq "Yes") {
+                    foreach ($file in $hashFailFiles) {
+                        try {
+                            Remove-Item -Path $file
+                            $syncHash.LogMessages.Add("Deleted $file`r`n")
+                        }
+                        catch {
+                            $syncHash.LogMessages.Add("Failed to delete $file`r`n")
+                        }
                     }
                 }
 
