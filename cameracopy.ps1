@@ -1,3 +1,6 @@
+# https://github.com/pulpul-s/CameraCopy
+$version = "1.3.1"
+
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
@@ -312,7 +315,7 @@ function Main {
 
     # Create the form
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = "CameraCopy"
+    $form.Text = "CameraCopy " + $version
     $form.Size = New-Object System.Drawing.Size(305, 200)
     $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
     $form.StartPosition = "CenterScreen"
