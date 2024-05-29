@@ -4,7 +4,6 @@ $version = "1.4.0"
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 function Scan {
     # Get the list of volumes
