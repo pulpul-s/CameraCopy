@@ -1,13 +1,14 @@
-# https://github.com/pulpul-s/CameraCopy
-$version = "1.3.2"
+﻿# https://github.com/pulpul-s/CameraCopy
+$version = "1.4.0"
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 function Scan {
     # Get the list of volumes
-    $volumes = Get-Volume | Where-Object { $_.DriveLetter -ne $null }
+    $volumes = Get-Volume | Where-Object { $null -ne $_.DriveLetter }
 
     # Initialize an array to hold the output
     $output = @()
@@ -74,9 +75,6 @@ function CopyFiles {
         [string]$driveDescription
     )
 
-    Add-Type -AssemblyName System.Windows.Forms
-    Add-Type -AssemblyName System.Drawing
-
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "Copy progress"
     $form.Size = New-Object System.Drawing.Size(800, 400)
@@ -137,128 +135,163 @@ function CopyFiles {
                 $syncHash.LogMessages.Add("Files are marked for removal after copying!`r`n")
             }
 
-
             if ($fileCount -eq 0) {
                 $syncHash.LogMessages.Add("No eligible files found in the source directory.`r`n")
+                return
             }
-            else {
-                $syncHash.LogMessages.Add("Starting copy...`r`n")
-                Start-Sleep -Milliseconds 200
-                $totalFiles = $fileCount
-                $filesCopied = 0
-                $destinationRoot = $destinationPath
-                $hashFailFiles = @()
+            
+            $syncHash.LogMessages.Add("Starting copy...`r`n")
+            Start-Sleep -Milliseconds 200
+            $totalFiles = $fileCount
+            $filesCopied = 0
+            $destinationRoot = $destinationPath
+            $hashFailFiles = @()
 
-                foreach ($file in $files) {
-                    if ($syncHash.Cancel) {
-                        $syncHash.LogMessages.Add("Operation canceled.`r`n")
-                        break
-                    }
+            if ($config.minrating -ge 1) {
+                $shell = New-Object -ComObject Shell.Application
+                $ratingFolder = $shell.NameSpace($sourcePath)
+            }
 
-                    # Extract the creation date of the file
-                    if ($config.datetimestring) { 
-                        $creationDate = $file.CreationTime.ToString($config.datetimestring) 
-                    }
+            foreach ($file in $files) {
+                if ($syncHash.Cancel) {
+                    $syncHash.LogMessages.Add("Operation canceled.`r`n")
+                    break
+                }
 
-                    # Construct the full path
-                    $childPath = $config.folderprefix + $creationDate + $config.folderpostfix
+                # Extract the creation date of the file
+                if ($config.datetimestring) { 
+                    $creationDate = $file.CreationTime.ToString($config.datetimestring) 
+                }
+
+                # Construct the full path
+                $childPath = $config.folderprefix + $creationDate + $config.folderpostfix
                     
-                    # Construct the destination folder path
-                    $destinationPath = Join-Path -Path $destinationRoot -ChildPath $childPath
+                # Construct the destination folder path
+                $destinationPath = Join-Path -Path $destinationRoot -ChildPath $childPath
 
-                    if (-not (Test-Path -Path $destinationPath)) {
-                        New-Item -ItemType Directory -Path $destinationPath | Out-Null
-                    }
+                # Copy the file to the destination folder
+                $destinationFile = Join-Path -Path $destinationPath -ChildPath $file.Name
 
-                    # Copy the file to the destination folder
-                    $destinationFile = Join-Path -Path $destinationPath -ChildPath $file.Name
+                if ($config.minrating -ge 1 -and (-not (Test-Path -Path $destinationFile) -or $config.overwrite)) {
+                    $fileItem = $ratingfolder.ParseName((Split-Path $file -Leaf))
+                    $rating = $ratingfolder.GetDetailsOf($fileItem, 19) -replace '[^\d]', ''
+                }
 
-                    if (-not (Test-Path -Path $destinationFile) -or $config.overwrite) {
-                        try {
-                            Copy-Item -Path $file.FullName -Destination $destinationFile -Force
+                $xmpfile = [System.IO.Path]::ChangeExtension($file.FullName, "xmp")
+                if (-not $rating -and $config.minrating -ge 1 -and (Test-Path -Path $xmpfile)) {
+                    $xmlContent = Get-Content -Path $xmpfile -Raw
+                    $xmlContent -match 'xmp:Rating="(\d+)"'
+                    $rating = $matches[1]
+                }
+
+                if (-not $rating -and $config.minrating -ge 1) {
+                    $rating = 0
+                }
+                
+                if (($rating -ge $config.minrating -or $config.minrating -eq 0) -and (-not (Test-Path -Path $destinationFile) -or $config.overwrite)) {
+                    try {
+
+                        # Create the folder if it does not exists
+                        if (-not (Test-Path -Path $destinationPath)) {
+                            New-Item -ItemType Directory -Path $destinationPath | Out-Null
+                        }
+
+                        # Copy file
+                        Copy-Item -Path $file.FullName -Destination $destinationFile -Force
                             
-                            # Preserve the timestamps
-                            $destinationFileInfo = Get-Item -Path $destinationFile
-                            $destinationFileInfo.CreationTime = $file.CreationTime
-                            $destinationFileInfo.LastWriteTime = $file.LastWriteTime
+                        # Preserve the timestamps
+                        $destinationFileInfo = Get-Item -Path $destinationFile
+                        $destinationFileInfo.CreationTime = $file.CreationTime
+                        $destinationFileInfo.LastWriteTime = $file.LastWriteTime
                             
-                            $filesCopied++
-                            $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
-                            $progressPercentage = "{0:n1}" -f $progressPercentage
-
-                            # Check copy integrity SHA256
-                            $hashCheck = $true
-                            if ($config.checkhash) {
-                                $sourceFileHash = (Get-FileHash -Path $file.FullName -Algorithm SHA256).Hash
-                                $destinationFileHash = (Get-FileHash -Path $destinationFile -Algorithm SHA256).Hash
-                                $hashCheck = ($sourceFileHash -eq $destinationFileHash)
-                                $syncHash.LogMessages.Add("Copied $($file.FullName) to $destinationFile ($progressPercentage % complete, SHA256 match $hashCheck)`r`n")
-                            } 
-                            else {
-                                $syncHash.LogMessages.Add("Copied $($file.FullName) to $destinationFile ($progressPercentage % complete)`r`n")
-                            }
-
-                            if (-not $hashCheck) {
-                                $hashFailFiles += $destinationFile
-                            }                            
-                        }
-                        catch {
-                            syncHash.LogMessages.Add("Failed to copy $($file.FullName)`r`n")
-                        }
-                        finally {
-                            if ($autoremove -and (Test-Path $destinationFile) -and $hashCheck) {
-                                Remove-Item -Path $file.FullName
-                                $syncHash.LogMessages.Add("Removed file $($file.FullName)`r`n")
-                            }
-                        }
-                    }
-                    else {
                         $filesCopied++
                         $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
                         $progressPercentage = "{0:n1}" -f $progressPercentage
-                        $syncHash.LogMessages.Add("$($destinationFile) exists, not replaced. ($progressPercentage % complete)`r`n")
-                    }
-                }
 
-                $copyCompleted = $true
-                if (-not $syncHash.Cancel) {
-                    $syncHash.LogMessages.Add("Files copied.`r`n")
-                }
-
-                $verifyHashFailDelete = $null
-                if ($hashFailFiles -and $config.checkhash) {
-                    $syncHash.LogMessages.Add("Following files($($hashFailFiles.Count)) failed the hash check and their source has not been removed:`r`n")
-                    foreach ($file in $hashFailFiles) {
-                        $syncHash.LogMessages.Add("$($file)`r`n")
-                    }
-                    $verifyHashFailDelete = [System.Windows.Forms.MessageBox]::Show("Do you want to delete the files that failed the hash check?`r`n", "Delete confirmation", [System.Windows.Forms.MessageBoxButtons]::YesNo)
-                }
-
-                if ($verifyHashFailDelete -eq "Yes") {
-                    foreach ($file in $hashFailFiles) {
-                        try {
-                            Remove-Item -Path $file
-                            $syncHash.LogMessages.Add("Deleted $file`r`n")
+                        # Check copy integrity SHA256
+                        $hashCheck = $true
+                        if ($config.checkhash) {
+                            $sourceFileHash = (Get-FileHash -Path $file.FullName -Algorithm SHA256).Hash
+                            $destinationFileHash = (Get-FileHash -Path $destinationFile -Algorithm SHA256).Hash
+                            $hashCheck = ($sourceFileHash -eq $destinationFileHash)
+                            $syncHash.LogMessages.Add("Copied $($file.FullName) to $destinationFile ($progressPercentage % complete, SHA256 match $hashCheck)`r`n")
+                        } 
+                        else {
+                            $syncHash.LogMessages.Add("Copied $($file.FullName) to $destinationFile ($progressPercentage % complete)`r`n")
                         }
-                        catch {
-                            $syncHash.LogMessages.Add("Failed to delete $file`r`n")
+
+                        if (-not $hashCheck) {
+                            $hashFailFiles += $destinationFile
+                        }
+
+                        if ($autoremove -and (Test-Path $destinationFile) -and $hashCheck) {
+                            Remove-Item -Path $file.FullName
+                            $syncHash.LogMessages.Add("Removed file $($file.FullName)`r`n")
                         }
                     }
+                    catch {
+                        $syncHash.LogMessages.Add("Error while processing $($file): $($_.Exception.Message)`r`n")
+                    }
                 }
-
-                $verifyFormat = $null
-                if ($format -and $copyCompleted -and $config.formatprompt) {
-                    $verifyFormat = [System.Windows.Forms.MessageBox]::Show("This will format $driveDescription to $format`r`nDo you want to continue?", "Format confirmation", [System.Windows.Forms.MessageBoxButtons]::YesNo)
-                    $syncHash.LogMessages.Add("$verifyFormat`r`n")
+                elseif ($config.minrating -ne 0 -and $rating -lt $config.minrating -and -not (Test-Path -Path $destinationFile)) {
+                    $filesCopied++
+                    $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
+                    $progressPercentage = "{0:n1}" -f $progressPercentage
+                    $syncHash.LogMessages.Add("$($file.FullName) not copied, too low($rating) rating. ($progressPercentage % complete)`r`n")
                 }
-                elseif ($format -and $copyCompleted -and -not $config.formatprompt) {
-                    FormatDrive
+                elseif ($config.minrating -ne 0 -and $rating -lt $config.minrating -and (Test-Path -Path $destinationFile) -and $config.overwrite) {
+                    $filesCopied++
+                    $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
+                    $progressPercentage = "{0:n1}" -f $progressPercentage
+                    $syncHash.LogMessages.Add("$($file.FullName) not overwritten, too low($rating) rating. ($progressPercentage % complete)`r`n")
                 }
-
-                if ($format -and $copyCompleted -and $verifyFormat -eq "Yes") {
-                    FormatDrive
+                else {
+                    $filesCopied++
+                    $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
+                    $progressPercentage = "{0:n1}" -f $progressPercentage
+                    $syncHash.LogMessages.Add("$($destinationFile) exists, not replaced. ($progressPercentage % complete)`r`n")
                 }
             }
+
+            $copyCompleted = $true
+            if (-not $syncHash.Cancel) {
+                $syncHash.LogMessages.Add("Files copied.`r`n")
+            }
+
+            $verifyHashFailDelete = $null
+            if ($hashFailFiles -and $config.checkhash) {
+                $syncHash.LogMessages.Add("Following files($($hashFailFiles.Count)) failed the hash check and their source has not been removed:`r`n")
+                foreach ($file in $hashFailFiles) {
+                    $syncHash.LogMessages.Add("$($file)`r`n")
+                }
+                $verifyHashFailDelete = [System.Windows.Forms.MessageBox]::Show("Do you want to delete the files that failed the hash check?`r`n", "Delete confirmation", [System.Windows.Forms.MessageBoxButtons]::YesNo)
+            }
+
+            if ($verifyHashFailDelete -eq "Yes") {
+                foreach ($file in $hashFailFiles) {
+                    try {
+                        Remove-Item -Path $file
+                        $syncHash.LogMessages.Add("Deleted $file`r`n")
+                    }
+                    catch {
+                        $syncHash.LogMessages.Add("Failed to delete $file`r`n")
+                    }
+                }
+            }
+
+            $verifyFormat = $null
+            if ($format -and $copyCompleted -and $config.formatprompt) {
+                $verifyFormat = [System.Windows.Forms.MessageBox]::Show("This will format $driveDescription to $format`r`nDo you want to continue?", "Format confirmation", [System.Windows.Forms.MessageBoxButtons]::YesNo)
+                $syncHash.LogMessages.Add("$verifyFormat`r`n")
+            }
+            elseif ($format -and $copyCompleted -and -not $config.formatprompt) {
+                FormatDrive
+            }
+
+            if ($format -and $copyCompleted -and $verifyFormat -eq "Yes") {
+                FormatDrive
+            }
+            
 
         }
         catch {
@@ -313,9 +346,124 @@ function CopyFiles {
 }
 
 
+function SettingsForm {
+    # Read JSON file
+    $jsonContent = Get-Content -Path "cameracopy.json" | Out-String
+    $jsonObject = ConvertFrom-Json -InputObject $jsonContent
+
+    # Create form
+    $settingsForm = New-Object System.Windows.Forms.Form
+    $settingsForm.Text = "Configuration"
+    $settingsForm.Size = New-Object System.Drawing.Size(350, 550)
+    $settingsForm.StartPosition = "CenterScreen"
+    $settingsForm.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
+
+    # Create labels and textboxes dynamically from JSON fields
+    $yPos = 20
+    foreach ($propertyName in $jsonObject.PSObject.Properties.Name) {
+        $label = New-Object System.Windows.Forms.Label
+        $label.Text = $propertyName
+        $label.AutoSize = $true
+        $label.Location = New-Object System.Drawing.Point(20, $yPos)
+    
+        if (($jsonObject.$propertyName -eq $true -or $jsonObject.$propertyName -eq $false -or $propertyName -eq "autoformat") -and $propertyName -ne "defaultdevice") {
+            $comboBox = New-Object System.Windows.Forms.ComboBox
+            $comboBox.Location = New-Object System.Drawing.Point(150, $yPos)
+            $comboBox.Size = New-Object System.Drawing.Size(160, 20)
+            $comboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList    
+            $comboBox.Name = $propertyName
+
+            if ($propertyName -eq "autoformat") {
+                $comboBox.Items.Add("") | Out-Null
+                $comboBox.Items.Add("FAT32") | Out-Null
+                $comboBox.Items.Add("exFAT") | Out-Null
+                $comboBox.Items.Add("NTFS") | Out-Null
+            }
+            else {
+                $comboBox.Items.Add("True") | Out-Null
+                $comboBox.Items.Add("False") | Out-Null
+            }
+
+            $selectedItem = if ($jsonObject.$propertyName -eq $true) { 
+                "True" 
+            } 
+            elseif ($jsonObject.$propertyName -eq $false) { 
+                "False" 
+            } 
+            else { 
+                $jsonObject.$propertyName.ToString() 
+            }
+            $comboBox.SelectedIndex = $comboBox.Items.IndexOf($selectedItem)
+
+            $yPos += 30
+            $settingsForm.Controls.Add($comboBox)
+        }
+        else {
+            $textBox = New-Object System.Windows.Forms.TextBox
+            $textBox.Location = New-Object System.Drawing.Point(150, $yPos)
+            $textBox.Size = New-Object System.Drawing.Size(160, 20)
+            $textBox.Name = $propertyName  # Assigning property name as the control name
+    
+            if ($jsonObject.$propertyName -is [System.Collections.IList]) {
+                $textBox.Text = $jsonObject.$propertyName -join ";"
+            }
+            else {
+                $textBox.Text = $jsonObject.$propertyName
+            }
+    
+            $yPos += 30
+            $settingsForm.Controls.Add($textBox)
+        }
+        
+        $settingsForm.Controls.Add($label)
+
+    }
+    # Add Save button
+    $button = New-Object System.Windows.Forms.Button
+    $button.Text = "Save"
+    $button.Location = New-Object System.Drawing.Point(137, ($yPos + 5))
+    $button.Size = New-Object System.Drawing.Size(75, 23)
+    $button.Add_Click({
+            foreach ($control in $settingsForm.Controls) {
+                $propertyName = $control.Name
+                if ($control -is [System.Windows.Forms.ComboBox] -and $propertyName -ne "autoformat") {
+                    $jsonObject.$propertyName = [bool]::Parse($control.SelectedItem)
+                }
+    
+                if ($control -is [System.Windows.Forms.ComboBox] -and $propertyName -eq "autoformat") {
+                    $jsonObject.$propertyName = $control.SelectedItem
+                }
+    
+                if ($control -is [System.Windows.Forms.TextBox] -and $jsonObject.$propertyName -is [System.Collections.IList]) {
+                    $jsonObject.$propertyName = @($control.Text -split ';')
+
+                }
+    
+                if ($control -is [System.Windows.Forms.TextBox] -and $jsonObject.$propertyName -isnot [System.Collections.IList]) {
+                    $jsonObject.$propertyName = $control.Text
+                }
+            }
+    
+            try {
+                $jsonObject | ConvertTo-Json | Set-Content -Path "cameracopy.json"
+                [System.Windows.Forms.MessageBox]::Show("Configuration saved successfully.`r`nCameraCopy will restart if you made changes.")
+            }
+            catch {
+                [System.Windows.Forms.MessageBox]::Show("Could not save file cameracopy.json`r`nMake sure you have write privileges or run as Admin.")
+            }
+        })
+    $settingsForm.Controls.Add($button)
+
+    # Display form
+    $settingsForm.ShowDialog()
+
+}
+
+
 function Main {
     param(
-        $drives
+        $drives,
+        $config
     )
 
     # Create the form
@@ -444,11 +592,43 @@ function Main {
 
         })
 
+
+    # settings icon
+    $pictureBox = New-Object System.Windows.Forms.PictureBox
+    $pictureBox.Size = New-Object System.Drawing.Size(25, 25)  # Adjust size as needed
+    $pictureBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
+    $pictureBox.Location = New-Object System.Drawing.Point(($form.ClientSize.Width - 16), ($form.ClientSize.Height - 16))  # Position in bottom right corner with margin
+    $pictureBox.Image = [System.Drawing.Icon]::ExtractAssociatedIcon("assets/settings.ico").ToBitmap()
+
+    $saveClose = $false
+    $pictureBox.Add_Click({
+            $configHash = (Get-FileHash "cameracopy.json" -Algorithm SHA256).Hash
+            SettingsForm
+            $newConfigHash = (Get-FileHash "cameracopy.json" -Algorithm SHA256).Hash
+            if ($newConfigHash -ne $configHash) {
+                $saveClose = $true
+                $form.Close()
+            }
+        })
+
+    $form.Controls.Add($pictureBox)
+
+    $form.add_FormClosing({
+            if (-not $saveClose) {
+                $global:runAgain = $false
+            }
+        })
+
+
     # Close splash and show main window
     $splash.Close()
     $form.ShowDialog()
 }
 
-$drives, $splash, $config = SplashScan
+# Run the program again if it is closed by saving settings save.
+$global:runAgain = $true
 
-Main -Drives $drives
+while ($runAgain) {
+    $drives, $splash, $config = SplashScan
+    Main -Drives $drives -Config $config
+}

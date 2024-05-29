@@ -1,25 +1,27 @@
 {
-    "source": "DCIM\\",
-    "destination": "D:\\Pictures\\",
-    "includedfiles": [
-        "*.arw",
-        "*.mp4"
-    ],
-    "excludedfiles": [
-        "*thumb*",
-        "ABC06591.ARW"
-    ],
-    "includeddevices": [
-        "Sony",
-        "DataTraveler"
-    ],
-    "folderprefix": "prefix_",
-    "datetimestring": "yyyy-MM-dd",
-    "folderpostfix": "_postfix",
-    "defaultdevice": 0,
-    "autoremove": false,
-    "autoformat": "exFAT",
-    "formatprompt": true,
-    "checkhash": true,
-    "overwrite": false
+    "source":  "DCIM",
+    "destination":  "D:\\Pictures",
+    "includedfiles":  [
+                          "*.mp4",
+                          "*.arw",
+                          "*.jpg"
+                      ],
+    "excludedfiles":  [
+                          "*thumb*",
+                          "EXAMPLE.ARW"
+                      ],
+    "includeddevices":  [
+                            "Sony",
+                            "DataTraveler"
+                        ],
+    "folderprefix":  "prefix_",
+    "datetimestring":  "yyyy-MM-dd",
+    "folderpostfix":  "_postfix",
+    "defaultdevice":  "0",
+    "minrating":  "0",
+    "autoformat":  "exFAT",
+    "autoremove":  false,
+    "formatprompt":  true,
+    "checkhash":  true,
+    "overwrite":  false
 }
