@@ -47,5 +47,5 @@ Edit cameracopy.json by hand or click the cogwheel icon.
 * autoformat and autoremove only affect which option is default in the gui.
 * Does not support MTP devices. Devices must have an assigned volume letter.
 * SHA256 hash check should not be necessary, since USB file transfer is error correcting. However if you suspect the integrity of the file transfer, you can enable the option. If a hash check fails, the source files that fail the hash check will not be removed, even when auto remove is enabled.
-* If files fail the hash check you will be prompted to delete the files. If you choose to delete files that failed the hash check, to try again run copy.
+* If files fail the hash check, you will be prompted to delete the files.
 * minrating 0< first checks the file metadata for Rating, if not found it looks it from $filename.xmp file. Files without rating are rated 0.
