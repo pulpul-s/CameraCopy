@@ -122,6 +122,11 @@ function CopyFiles {
             $directory = $sourcePath
             $mp4Files = Get-ChildItem -Path $directory -Recurse -Filter "C*.mp4"
         
+            if (-not $mp4Files) {
+                $syncHash.LogMessages.Add("No mp4 files found`r`n")
+                return
+            }
+            
             foreach ($mp4File in $mp4Files) {
         
                 $xmlFile = $mp4File.FullName -replace ".MP4", "M01.XML"
