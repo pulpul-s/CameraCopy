@@ -1,28 +1,27 @@
 {
-    "source": "",
-    "destination": "D:\\Pictures",
-    "includedfiles": [
-        "C*.xml",
-        "C*.mp4",
-        "DSC*.ARW"
-    ],
-    "excludedfiles": [
-        "C*T*.JPG",
-        "MEDIAPRO.XML"
-    ],
-    "includeddevices": [
-        "Sony",
-        "DataTraveler"
-    ],
-    "folderprefix": "prefix_",
-    "datetimestring": "yyyy-MM-dd",
-    "folderpostfix": "_postfix",
-    "defaultdevice": "0",
-    "minrating": "0",
-    "autoformat": "exFAT",
-    "autoremove": false,
-    "formatprompt": true,
-    "checkhash": true,
-    "overwrite": false,
-    "fixsonytimestamps": true
+    "source":  "",
+    "destination":  "D:\\Pictures",
+    "includedfiles":  [
+                          "C*.mp4",
+                          "DSC*.ARW"
+                      ],
+    "excludedfiles":  [
+                          "C*T*.JPG",
+                          "MEDIAPRO.XML"
+                      ],
+    "includeddevices":  [
+                            "Sony",
+                            "DataTraveler"
+                        ],
+    "folderprefix":  "prefix_",
+    "datetimestring":  "yyyy-MM-dd",
+    "folderpostfix":  "_postfix",
+    "defaultdevice":  "0",
+    "minrating":  "0",
+    "autoformat":  "exFAT",
+    "autoremove":  false,
+    "formatprompt":  true,
+    "checkhash":  true,
+    "overwrite":  false,
+    "fixsonytimestamps":  true
 }
