@@ -141,10 +141,14 @@ function CopyFiles {
             
             $syncHash.LogMessages.Add("Starting copy...`r`n")
             Start-Sleep -Milliseconds 200
+            $copyStartTime = Get-Date
             $totalFiles = $fileCount
             $filesCopied = 0
             $destinationRoot = $destinationPath
             $hashFailFiles = @()
+
+            $skippedFiles = 0
+            $copiedFiles = 0
 
             if ($config.minrating -ge 1) {
                 $shell = New-Object -ComObject Shell.Application
@@ -227,18 +231,21 @@ function CopyFiles {
                             Remove-Item -Path $file.FullName
                             $syncHash.LogMessages.Add("Removed file $($file.FullName)`r`n")
                         }
+                        $copiedFiles
                     }
                     catch {
                         $syncHash.LogMessages.Add("Error while processing $($file): $($_.Exception.Message)`r`n")
                     }
                 }
                 elseif ($config.minrating -ne 0 -and $rating -lt $config.minrating -and -not (Test-Path -Path $destinationFile)) {
+                    $skippedFiles++
                     $filesCopied++
                     $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
                     $progressPercentage = "{0:n1}" -f $progressPercentage
                     $syncHash.LogMessages.Add("$($file.FullName) not copied, too low($rating) rating. ($progressPercentage % complete)`r`n")
                 }
                 elseif ($config.minrating -ne 0 -and $rating -lt $config.minrating -and (Test-Path -Path $destinationFile) -and $config.overwrite) {
+                    $skippedFiles++
                     $filesCopied++
                     $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
                     $progressPercentage = "{0:n1}" -f $progressPercentage
@@ -254,7 +261,11 @@ function CopyFiles {
 
             $copyCompleted = $true
             if (-not $syncHash.Cancel) {
-                $syncHash.LogMessages.Add("Files copied.`r`n")
+                $copyEndTime = Get-Date
+                $elapsedTime = $copyEndTime - $copyStartTime
+                $elapsedTimeInSeconds = [math]::Round($elapsedTime.TotalSeconds, 0)
+                Write-Output "Elapsed time: $elapsedTimeInSeconds seconds"
+                $syncHash.LogMessages.Add("$copiedFiles files copied, $skippedFiles skipped in $($elapsedTimeInSeconds)s.`r`n")
             }
 
             $verifyHashFailDelete = $null
