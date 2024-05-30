@@ -1,5 +1,5 @@
 ﻿# https://github.com/pulpul-s/CameraCopy
-$version = "1.4.0"
+$version = "1.4.1"
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -36,10 +36,10 @@ function SplashScan {
 
     # Create the splash screen form
     $splashForm = New-Object System.Windows.Forms.Form
+    $splashForm.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon("assets\cameracopy.ico")
     $splashForm.Text = "Scanning drives..."
     $splashForm.Size = New-Object System.Drawing.Size(300, 225)
     $splashForm.StartPosition = "CenterScreen"
-    $splashForm.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon("assets\cameracopy.ico")
     $splashForm.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::None
     $splashForm.BackgroundImage = [system.drawing.image]::FromFile("assets\splashback.png")
 
@@ -76,7 +76,7 @@ function CopyFiles {
 
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "Copy progress"
-    $form.Size = New-Object System.Drawing.Size(800, 400)
+    $form.Size = New-Object System.Drawing.Size(950, 450)
     $form.StartPosition = "CenterScreen"
     $form.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon("assets\cameracopy.ico")
     $form.BackColor = [System.Drawing.Color]::White
@@ -147,8 +147,8 @@ function CopyFiles {
             $destinationRoot = $destinationPath
             $hashFailFiles = @()
 
-            $skippedFiles = 0
-            $copiedFiles = 0
+            $skipFileCount = 0
+            $copyFileCount = 0
 
             if ($config.minrating -ge 1) {
                 $shell = New-Object -ComObject Shell.Application
@@ -231,27 +231,28 @@ function CopyFiles {
                             Remove-Item -Path $file.FullName
                             $syncHash.LogMessages.Add("Removed file $($file.FullName)`r`n")
                         }
-                        $copiedFiles
+                        $copyFileCount++
                     }
                     catch {
                         $syncHash.LogMessages.Add("Error while processing $($file): $($_.Exception.Message)`r`n")
                     }
                 }
-                elseif ($config.minrating -ne 0 -and $rating -lt $config.minrating -and -not (Test-Path -Path $destinationFile)) {
-                    $skippedFiles++
-                    $filesCopied++
-                    $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
-                    $progressPercentage = "{0:n1}" -f $progressPercentage
-                    $syncHash.LogMessages.Add("$($file.FullName) not copied, too low($rating) rating. ($progressPercentage % complete)`r`n")
-                }
                 elseif ($config.minrating -ne 0 -and $rating -lt $config.minrating -and (Test-Path -Path $destinationFile) -and $config.overwrite) {
-                    $skippedFiles++
+                    $skipFilecount++
                     $filesCopied++
                     $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
                     $progressPercentage = "{0:n1}" -f $progressPercentage
                     $syncHash.LogMessages.Add("$($file.FullName) not overwritten, too low($rating) rating. ($progressPercentage % complete)`r`n")
                 }
+                elseif ($config.minrating -ne 0 -and $rating -lt $config.minrating -and -not (Test-Path -Path $destinationFile)) {
+                    $skipFilecount++
+                    $filesCopied++
+                    $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
+                    $progressPercentage = "{0:n1}" -f $progressPercentage
+                    $syncHash.LogMessages.Add("$($file.FullName) not copied, too low($rating) rating. ($progressPercentage % complete)`r`n")
+                }
                 else {
+                    $skipFilecount++
                     $filesCopied++
                     $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
                     $progressPercentage = "{0:n1}" -f $progressPercentage
@@ -265,7 +266,7 @@ function CopyFiles {
                 $elapsedTime = $copyEndTime - $copyStartTime
                 $elapsedTimeInSeconds = [math]::Round($elapsedTime.TotalSeconds, 0)
                 Write-Output "Elapsed time: $elapsedTimeInSeconds seconds"
-                $syncHash.LogMessages.Add("$copiedFiles files copied, $skippedFiles skipped in $($elapsedTimeInSeconds)s.`r`n")
+                $syncHash.LogMessages.Add("$copyFileCount files copied, $skipFilecount skipped in $($elapsedTimeInSeconds) seconds`r`n")
             }
 
             $verifyHashFailDelete = $null
@@ -363,6 +364,7 @@ function SettingsForm {
 
     # Create form
     $settingsForm = New-Object System.Windows.Forms.Form
+    $settingsForm.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon("assets\cameracopy.ico")
     $settingsForm.Text = "Configuration"
     $settingsForm.Size = New-Object System.Drawing.Size(350, 550)
     $settingsForm.StartPosition = "CenterScreen"
@@ -488,14 +490,14 @@ function Main {
     # Create a ComboBox for drive selection
     $label = New-Object System.Windows.Forms.Label
     $label.Text = "Source Drive:"
-    $label.Size = New-Object System.Drawing.Size(200, 20)
+    $label.Size = New-Object System.Drawing.Size(175, 20)
     $label.Location = New-Object System.Drawing.Point(10, 20)
     $form.Controls.Add($label)
 
     $filterWords = @($config.includeddevices)
 
     $comboBox = New-Object System.Windows.Forms.ComboBox
-    $comboBox.Size = New-Object System.Drawing.Size(270, 20)
+    $comboBox.Size = New-Object System.Drawing.Size(262, 20)
     $comboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
     $comboBox.Location = New-Object System.Drawing.Point(10, 40)
 
@@ -510,6 +512,23 @@ function Main {
     }
     $comboBox.SelectedIndex = $config.defaultdevice
     $form.Controls.Add($comboBox)
+
+
+    $saveClose = $false
+    # refresh icon
+    $refreshPictureBox = New-Object System.Windows.Forms.PictureBox
+    $refreshPictureBox.Size = New-Object System.Drawing.Size(20, 20)
+    $refreshPictureBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
+    $refreshPictureBox.Location = New-Object System.Drawing.Point(275, 40)
+    $refreshPictureBox.Image = [System.Drawing.Image]::FromFile("assets/refresh.png")
+    $refreshPictureBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
+        
+    $refreshPictureBox.Add_Click({
+            $saveClose = $true
+            $form.Close()
+        })
+        
+    $form.Controls.Add($refreshPictureBox)
 
 
     # Format checkboxes
@@ -604,14 +623,13 @@ function Main {
 
 
     # settings icon
-    $pictureBox = New-Object System.Windows.Forms.PictureBox
-    $pictureBox.Size = New-Object System.Drawing.Size(25, 25)  # Adjust size as needed
-    $pictureBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
-    $pictureBox.Location = New-Object System.Drawing.Point(($form.ClientSize.Width - 16), ($form.ClientSize.Height - 16))  # Position in bottom right corner with margin
-    $pictureBox.Image = [System.Drawing.Icon]::ExtractAssociatedIcon("assets/settings.ico").ToBitmap()
+    $settingsPictureBox = New-Object System.Windows.Forms.PictureBox
+    $settingsPictureBox.Size = New-Object System.Drawing.Size(25, 25)  # Adjust size as needed
+    $settingsPictureBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
+    $settingsPictureBox.Location = New-Object System.Drawing.Point(($form.ClientSize.Width - 16), ($form.ClientSize.Height - 16))  # Position in bottom right corner with margin
+    $settingsPictureBox.Image = [System.Drawing.Icon]::ExtractAssociatedIcon("assets/settings.ico").ToBitmap()
 
-    $saveClose = $false
-    $pictureBox.Add_Click({
+    $settingsPictureBox.Add_Click({
             $configHash = (Get-FileHash "cameracopy.json" -Algorithm SHA256).Hash
             SettingsForm
             $newConfigHash = (Get-FileHash "cameracopy.json" -Algorithm SHA256).Hash
@@ -621,7 +639,7 @@ function Main {
             }
         })
 
-    $form.Controls.Add($pictureBox)
+    $form.Controls.Add($settingsPictureBox)
 
     $form.add_FormClosing({
             if (-not $saveClose) {
