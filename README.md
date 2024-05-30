@@ -49,4 +49,4 @@ Edit cameracopy.json by hand or click the cogwheel icon.
 * SHA256 hash check should not be necessary, since USB file transfer is error correcting. However if you suspect the integrity of the file transfer, you can enable the option. If a hash check fails, the source files that fail the hash check will not be removed, even when auto remove is enabled.
 * If files fail the hash check, you will be prompted to delete the files.
 * minrating 0< first checks the file metadata for Rating, if not found it looks it from $filename.xmp file. Files without rating are rated 0.
-* Icons might be a bit off if you run the script and not the exe.
+* Icons might be a bit off if you covert the script to exe with ps2exe.
