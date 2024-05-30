@@ -1,5 +1,5 @@
 ﻿# https://github.com/pulpul-s/CameraCopy
-$version = "1.4.1"
+$version = "1.4.2"
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -17,7 +17,7 @@ function Scan {
     foreach ($volume in $volumes) {
         $driveLetter = $volume.DriveLetter
         $sizeGB = [math]::Round($volume.Size / 1GB, 3)
-    
+
         # Get the physical disk related to the volume
         $partition = Get-Partition -DriveLetter $driveLetter
         $diskNumber = $partition.DiskNumber
@@ -117,6 +117,45 @@ function CopyFiles {
             }
         }
 
+        function fixSonyVideoTimestamps {
+            $syncHash.LogMessages.Add("Trying to fix CreationDate metadata for mp4 files saved with Sony cameras.`r`n")
+            $directory = $sourcePath
+            $mp4Files = Get-ChildItem -Path $directory -Recurse -Filter "C*.mp4"
+        
+            foreach ($mp4File in $mp4Files) {
+        
+                $xmlFile = $mp4File.FullName -replace ".MP4", "M01.XML"
+
+                if (-not (Test-Path $xmlFile)) {
+                    $syncHash.LogMessages.Add("XML file not found for MP4: $($mp4File.FullName)`r`n")
+                    continue
+                }
+        
+                $xmlContent = Get-Content $xmlFile
+                $creationDateLine = $xmlContent | Where-Object { $_ -match '<CreationDate value="([^"]+)"' }
+                $creationTimestamp = if ($creationDateLine) {
+                    $matches = [regex]::Matches($creationDateLine, 'value="([^"]+)"')
+                    $matches.Groups[1].Value
+                }
+        
+                if (-not $creationTimestamp) {
+                    $syncHash.LogMessages.Add("CreationDate value not found in XML file: $($xmlFile.FullName)`r`n")
+                    continue
+                }
+        
+                $dateTimeString = $creationTimestamp -replace '(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}).*', '$1'
+                $creationDateTime = [DateTime]::ParseExact($dateTimeString, "yyyy-MM-ddTHH:mm:ss", $null)
+        
+                try {
+                    $mp4File.CreationTime = $creationDateTime
+                    $syncHash.LogMessages.Add("$($mp4file.FullName) timestamp changed to $creationDateTime`r`n")
+                } 
+                catch {
+                    $syncHash.LogMessages.Add("Failed to change timestamp of $mp4file`r`n")
+                }
+            }
+        }
+
         try {
             $files = Get-ChildItem -Path $sourcePath -File -Recurse | Where-Object {
                 $file = $_
@@ -131,6 +170,10 @@ function CopyFiles {
             $fileCount = $files.Count
             $syncHash.LogMessages.Add("Found $fileCount files in $sourcePath`r`n")
 
+            if ($config.fixsonytimestamps) {
+                fixSonyVideoTimestamps
+            }
+
             if ($autoremove) {
                 $syncHash.LogMessages.Add("Files are marked for removal after copying!`r`n")
             }
@@ -139,7 +182,7 @@ function CopyFiles {
                 $syncHash.LogMessages.Add("No eligible files found in the source directory.`r`n")
                 return
             }
-            
+
             $syncHash.LogMessages.Add("Starting copy...`r`n")
             Start-Sleep -Milliseconds 200
             $copyStartTime = Get-Date
@@ -169,7 +212,7 @@ function CopyFiles {
 
                 # Construct the full path
                 $childPath = $config.folderprefix + $creationDate + $config.folderpostfix
-                    
+
                 # Construct the destination folder path
                 $destinationPath = Join-Path -Path $destinationRoot -ChildPath $childPath
 
@@ -191,7 +234,7 @@ function CopyFiles {
                 if (-not $rating -and $config.minrating -ge 1) {
                     $rating = 0
                 }
-                
+
                 if (($rating -ge $config.minrating -or $config.minrating -eq 0) -and (-not (Test-Path -Path $destinationFile) -or $config.overwrite)) {
                     try {
 
@@ -202,12 +245,12 @@ function CopyFiles {
 
                         # Copy file
                         Copy-Item -Path $file.FullName -Destination $destinationFile -Force
-                            
+
                         # Preserve the timestamps
                         $destinationFileInfo = Get-Item -Path $destinationFile
                         $destinationFileInfo.CreationTime = $file.CreationTime
                         $destinationFileInfo.LastWriteTime = $file.LastWriteTime
-                            
+
                         $filesCopied++
                         $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
                         $progressPercentage = "{0:n1}" -f $progressPercentage
@@ -303,14 +346,14 @@ function CopyFiles {
             if ($format -and $copyCompleted -and $verifyFormat -eq "Yes") {
                 FormatDrive
             }
-            
+
 
         }
         catch {
             $syncHash.LogMessages.Add("Error: $_`r`n")
         }
     }
-    
+
 
     # Create a PowerShell instance and add the script block to it
     $powerShell = [powershell]::Create().AddScript($scriptBlock).AddArgument($syncHash).AddArgument($sourcePath).AddArgument($destinationPath).AddArgument($config).AddArgument($autoremove).AddArgument($format).AddArgument($drive).AddArgument($driveDescription)
@@ -367,7 +410,7 @@ function SettingsForm {
     $settingsForm = New-Object System.Windows.Forms.Form
     $settingsForm.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon("assets\cameracopy.ico")
     $settingsForm.Text = "Configuration"
-    $settingsForm.Size = New-Object System.Drawing.Size(350, 550)
+    $settingsForm.Size = New-Object System.Drawing.Size(350, 580)
     $settingsForm.StartPosition = "CenterScreen"
     $settingsForm.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
 
@@ -378,7 +421,7 @@ function SettingsForm {
         $label.Text = $propertyName
         $label.AutoSize = $true
         $label.Location = New-Object System.Drawing.Point(20, $yPos)
-    
+
         if (($jsonObject.$propertyName -eq $true -or $jsonObject.$propertyName -eq $false -or $propertyName -eq "autoformat") -and $propertyName -ne "defaultdevice") {
             $comboBox = New-Object System.Windows.Forms.ComboBox
             $comboBox.Location = New-Object System.Drawing.Point(150, $yPos)
@@ -416,21 +459,22 @@ function SettingsForm {
             $textBox.Location = New-Object System.Drawing.Point(150, $yPos)
             $textBox.Size = New-Object System.Drawing.Size(160, 20)
             $textBox.Name = $propertyName  # Assigning property name as the control name
-    
+
             if ($jsonObject.$propertyName -is [System.Collections.IList]) {
                 $textBox.Text = $jsonObject.$propertyName -join ";"
             }
             else {
                 $textBox.Text = $jsonObject.$propertyName
             }
-    
+
             $yPos += 30
             $settingsForm.Controls.Add($textBox)
         }
-        
+
         $settingsForm.Controls.Add($label)
 
     }
+
     # Add Save button
     $button = New-Object System.Windows.Forms.Button
     $button.Text = "Save"
@@ -442,21 +486,21 @@ function SettingsForm {
                 if ($control -is [System.Windows.Forms.ComboBox] -and $propertyName -ne "autoformat") {
                     $jsonObject.$propertyName = [bool]::Parse($control.SelectedItem)
                 }
-    
+
                 if ($control -is [System.Windows.Forms.ComboBox] -and $propertyName -eq "autoformat") {
                     $jsonObject.$propertyName = $control.SelectedItem
                 }
-    
+
                 if ($control -is [System.Windows.Forms.TextBox] -and $jsonObject.$propertyName -is [System.Collections.IList]) {
                     $jsonObject.$propertyName = @($control.Text -split ';')
 
                 }
-    
+
                 if ($control -is [System.Windows.Forms.TextBox] -and $jsonObject.$propertyName -isnot [System.Collections.IList]) {
                     $jsonObject.$propertyName = $control.Text
                 }
             }
-    
+
             try {
                 $jsonObject | ConvertTo-Json | Set-Content -Path "cameracopy.json"
                 [System.Windows.Forms.MessageBox]::Show("Configuration saved successfully.`r`nCameraCopy will restart if you made changes.")
@@ -522,12 +566,12 @@ function Main {
     $refreshPictureBox.Location = New-Object System.Drawing.Point(265, 40)
     $refreshPictureBox.Image = [System.Drawing.Image]::FromFile("assets/refresh.png")
     $refreshPictureBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
-        
+
     $refreshPictureBox.Add_Click({
             $saveClose = $true
             $form.Close()
         })
-        
+
     $form.Controls.Add($refreshPictureBox)
 
 
@@ -611,7 +655,7 @@ function Main {
                 if ($checkboxFAT32.Checked) { $format = "FAT32" }
                 if ($checkboxExFAT.Checked) { $format = "exFAT" }
                 if ($checkboxNTFS.Checked) { $format = "NTFS" }
-            
+
                 # Start copying removing formatting etc
                 CopyFiles -SourcePath "$sourcePath" -DestinationPath "$destinationPath" -Autoremove $checkBox.Checked -Format "$format" -Drive "$drive" -DriveDescription "$($comboBox.SelectedItem)"
             }
