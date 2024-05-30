@@ -12,29 +12,29 @@ Edit cameracopy.json by hand or click the cogwheel icon.
 
 ```json
 {
-    "source": "DCIM\\",                 <- Source folder of images, does not have to be set. Will only use volume letter if not set.
-    "destination": "D:\\Pictures",      <- Destination folder for files, must have full path.
-    "includedfiles": [                  <- List of files to include in copy, cameras might have additional files. Set to "*" if you want to copy everything.
+    "source": "DCIM\\",                 <- Source folder of images, does not have to be set. Will only use volume letter if not set
+    "destination": "D:\\Pictures",      <- Destination folder for files, must have full path
+    "includedfiles": [                  <- List of files to include in copy, cameras might have additional files. Set to "*" if you want to copy everything
         "*.arw",
         "*.mp4"
     ],
-    "excludedfiles": [                  <- Files to exclude from copy progress. Can be left empty.
+    "excludedfiles": [                  <- Files to exclude from copy progress. Can be left empty
         "*thumb*",
         "ABC06591.ARW"
     ],
-    "includeddevices": [                <- Volume dropdown filter keywords. If left empty, all found volumes will be listed.
+    "includeddevices": [                <- Volume dropdown filter keywords. If left empty, all found volumes will be listed
         "Sony",
         "DataTraveler"
     ],
-    "folderprefix": "prefix_",          <- Destination folder prefix.
-    "datetimestring": "yyyy-MM-dd",     <- Powershell datetime string used in destination folder. yyyy-MM-dd meaning 2024-01-01.
+    "folderprefix": "prefix_",          <- Destination folder prefix
+    "datetimestring": "yyyy-MM-dd",     <- Powershell datetime string used in destination folder. yyyy-MM-dd meaning 2024-01-01
     "folderpostfix": "_postfix",        <- Destination folder postfix.
-    "defaultdevice": "0",               <- If you know your device is always e.g. second on the list set to 1.
-    "minrating":  "0",                  <- Sets a minimum metadata Rating for files. Does not copy if no rating is found. 0 is off.
+    "defaultdevice": "0",               <- If you know your device is always e.g. second on the list set to 1
+    "minrating":  "0",                  <- Sets a minimum metadata Rating for files. Does not copy if no rating is found. 0 is off
     "autoformat": "exFAT",              <- Select format filesystem on start. Can be empty or any of FAT32, exFAT, NTFS
     "autoremove": false,                <- Select remove files after copying on start
-    "formatprompt": true,               <- Prompt before formatting, set to false if you want to format without confirmation (dangerous).
-    "checkhash": true,                  <- When true, do a SHA256 hash check fo each file after copy (slows down process).
+    "formatprompt": true,               <- Prompt before formatting, set to false if you want to format without confirmation (dangerous)
+    "checkhash": true,                  <- When true, do a SHA256 hash check fo each file after copy (slows down process)
     "overwrite": false,                 <- Overwrite existing files
     "fixsonytimestamps": true           <- Sony cameras sometimes have different CreationDate for the video files than the actual shooting time. Get the actual time from XML
 }
