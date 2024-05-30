@@ -35,7 +35,8 @@ Edit cameracopy.json by hand or click the cogwheel icon.
     "autoremove": false,                <- Select remove files after copying on start
     "formatprompt": true,               <- Prompt before formatting, set to false if you want to format without confirmation (dangerous).
     "checkhash": true,                  <- When true, do a SHA256 hash check fo each file after copy (slows down process).
-    "overwrite": false                  <- Overwrite existing files
+    "overwrite": false,                 <- Overwrite existing files
+    "fixsonytimestamps": true           <- Sony cameras sometimes have different CreationDate for the video files than the actual shooting time. Get the actual time from XML
 }
 ```
 
