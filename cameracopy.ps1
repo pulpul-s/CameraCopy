@@ -4,6 +4,7 @@ $version = "1.4.1"
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
+[System.Windows.Forms.Application]::EnableVisualStyles()
 
 function Scan {
     # Get the list of volumes
@@ -485,7 +486,6 @@ function Main {
     $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
     $form.StartPosition = "CenterScreen"
     $form.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon("assets\cameracopy.ico")
-
 
     # Create a ComboBox for drive selection
     $label = New-Object System.Windows.Forms.Label
