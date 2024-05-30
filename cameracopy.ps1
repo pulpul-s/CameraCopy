@@ -497,7 +497,7 @@ function Main {
     $filterWords = @($config.includeddevices)
 
     $comboBox = New-Object System.Windows.Forms.ComboBox
-    $comboBox.Size = New-Object System.Drawing.Size(262, 20)
+    $comboBox.Size = New-Object System.Drawing.Size(252, 20)
     $comboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
     $comboBox.Location = New-Object System.Drawing.Point(10, 40)
 
@@ -519,7 +519,7 @@ function Main {
     $refreshPictureBox = New-Object System.Windows.Forms.PictureBox
     $refreshPictureBox.Size = New-Object System.Drawing.Size(20, 20)
     $refreshPictureBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
-    $refreshPictureBox.Location = New-Object System.Drawing.Point(275, 40)
+    $refreshPictureBox.Location = New-Object System.Drawing.Point(265, 40)
     $refreshPictureBox.Image = [System.Drawing.Image]::FromFile("assets/refresh.png")
     $refreshPictureBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
         
@@ -626,7 +626,7 @@ function Main {
     $settingsPictureBox = New-Object System.Windows.Forms.PictureBox
     $settingsPictureBox.Size = New-Object System.Drawing.Size(25, 25)  # Adjust size as needed
     $settingsPictureBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
-    $settingsPictureBox.Location = New-Object System.Drawing.Point(($form.ClientSize.Width - 16), ($form.ClientSize.Height - 16))  # Position in bottom right corner with margin
+    $settingsPictureBox.Location = New-Object System.Drawing.Point(($form.ClientSize.Width - 26), ($form.ClientSize.Height - 26))  # Position in bottom right corner with margin
     $settingsPictureBox.Image = [System.Drawing.Icon]::ExtractAssociatedIcon("assets/settings.ico").ToBitmap()
 
     $settingsPictureBox.Add_Click({
