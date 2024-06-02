@@ -1,5 +1,5 @@
 ﻿# https://github.com/pulpul-s/CameraCopy
-$version = "1.4.2"
+$version = "1.5.0"
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -65,14 +65,42 @@ function SplashScan {
 }
 
 
+function preCopy {
+    param (
+        [string]$selectedDrive
+    )
+    
+    $selectedDrives = $selectedDrive -split '\|\|\|'
+    $drive = $selectedDrives[0] -split ':'
+    $drive2 = $selectedDrives[1] -split ':'
+
+    $sourcePath = "$($drive[0]):\$($config.source)"
+    $sourcePath2 = "$($drive2[0]):\$($config.source)"
+
+    $destinationPath = $config.destination
+    $format = $null
+    if ($checkboxFAT32.Checked) { $format = "FAT32" }
+    if ($checkboxExFAT.Checked) { $format = "exFAT" }
+    if ($checkboxNTFS.Checked) { $format = "NTFS" }
+
+
+    # Start copying removing formatting etc
+    CopyFiles -SourcePath "$sourcePath" -SourcePath2 "$sourcePath2" -DestinationPath "$destinationPath" -Autoremove $checkBox.Checked -Format "$format" -Drive "$($drive[0])" -Drive2 "$($drive2[0])" -DriveDescription "$($comboBox.SelectedItem)" -Clone $cloneCheckBox.Checked
+
+}
+
+
 function CopyFiles {
     param(
         [string]$sourcePath,
+        [string]$sourcePath2,
         [string]$destinationPath,
         [bool]$autoremove,
         [string]$format,
         [string]$drive,
-        [string]$driveDescription
+        [string]$drive2,
+        [string]$driveDescription,
+        [bool]$clone
     )
 
     $form = New-Object System.Windows.Forms.Form
@@ -104,9 +132,11 @@ function CopyFiles {
 
     # Define the script block for the runspace
     $scriptBlock = {
-        param($syncHash, $sourcePath, $destinationPath, $config, $autoremove, $format, $drive, $driveDescription)
-
+        param($syncHash, $sourcePath, $destinationPath, $config, $autoremove, $format, $drive, $driveDescription, $sourcePath2, $drive2, $clone)
+        
         function FormatDrive {
+            param($drive)
+
             try {
                 $syncHash.LogMessages.Add("Formatting volume ${drive}: to $format`r`n")
                 Format-Volume -DriveLetter $drive -FileSystem $format -Confirm:$false
@@ -117,7 +147,10 @@ function CopyFiles {
             }
         }
 
+
         function fixSonyVideoTimestamps {
+            param($sourcePath)
+
             $syncHash.LogMessages.Add("Trying to fix CreationDate metadata for mp4 files saved with Sony cameras.`r`n")
             $directory = $sourcePath
             $mp4Files = Get-ChildItem -Path $directory -Recurse -Filter "C*.mp4"
@@ -161,207 +194,241 @@ function CopyFiles {
             }
         }
 
-        try {
-            $files = Get-ChildItem -Path $sourcePath -File -Recurse | Where-Object {
-                $file = $_
-                # Check if the file matches any of the inclusion patterns
-                $matchesIncluded = $config.includedfiles | ForEach-Object { $file.Name -like $_ }
-                # Check if the file matches any of the exclusion patterns
-                $matchesExcluded = $config.excludedfiles | ForEach-Object { $file.Name -like $_ }
-                # Include the file only if it matches an inclusion pattern and does not match an exclusion pattern
+        function autoRemove {
+            param($autoremove, $destinationFile, $hashCheck)
+            
+            if ($autoremove -and (Test-Path $destinationFile) -and $hashCheck) {
+                Remove-Item -Path $file.FullName
+                $syncHash.LogMessages.Add("Removed file $($file.FullName)`r`n")
+            }
+        }
+    
+        function doCopy {
+            param($drive, $sourcePath, $clone)
+            
+            try {
+                $files = Get-ChildItem -Path $sourcePath -File -Recurse | Where-Object {
+                    $file = $_
+                    # Check if the file matches any of the inclusion patterns
+                    $matchesIncluded = $config.includedfiles | ForEach-Object { $file.Name -like $_ }
+                    # Check if the file matches any of the exclusion patterns
+                    $matchesExcluded = $config.excludedfiles | ForEach-Object { $file.Name -like $_ }
+                    # Include the file only if it matches an inclusion pattern and does not match an exclusion pattern
                 ($matchesIncluded -contains $true) -and ($matchesExcluded -notcontains $true)
-            }
-            $copyCompleted = $false
-            $fileCount = $files.Count
-            $syncHash.LogMessages.Add("Found $fileCount files in $sourcePath`r`n")
-
-            if ($config.fixsonytimestamps) {
-                fixSonyVideoTimestamps
-            }
-
-            if ($autoremove) {
-                $syncHash.LogMessages.Add("Files are marked for removal after copying!`r`n")
-            }
-
-            if ($fileCount -eq 0) {
-                $syncHash.LogMessages.Add("No eligible files found in the source directory.`r`n")
-                return
-            }
-
-            $syncHash.LogMessages.Add("Starting copy...`r`n")
-            Start-Sleep -Milliseconds 200
-            $copyStartTime = Get-Date
-            $totalFiles = $fileCount
-            $filesCopied = 0
-            $destinationRoot = $destinationPath
-            $hashFailFiles = @()
-
-            $skipFileCount = 0
-            $copyFileCount = 0
-
-            if ($config.minrating -ge 1) {
-                $shell = New-Object -ComObject Shell.Application
-                $ratingFolder = $shell.NameSpace($sourcePath)
-            }
-
-            foreach ($file in $files) {
-                if ($syncHash.Cancel) {
-                    $syncHash.LogMessages.Add("Operation canceled.`r`n")
-                    break
+                }
+                $copyCompleted = $false
+                $fileCount = $files.Count
+                $syncHash.LogMessages.Add("Found $fileCount files in $sourcePath`r`n")
+                
+                if ($config.fixsonytimestamps) {
+                    fixSonyVideoTimestamps -SourcePath "$sourcePath"
                 }
 
-                # Extract the creation date of the file
-                if ($config.datetimestring) { 
-                    $creationDate = $file.CreationTime.ToString($config.datetimestring) 
+                if ($autoremove) {
+                    $syncHash.LogMessages.Add("Files are marked for removal after copying!`r`n")
                 }
 
-                # Construct the full path
-                $childPath = $config.folderprefix + $creationDate + $config.folderpostfix
-
-                # Construct the destination folder path
-                $destinationPath = Join-Path -Path $destinationRoot -ChildPath $childPath
-
-                # Copy the file to the destination folder
-                $destinationFile = Join-Path -Path $destinationPath -ChildPath $file.Name
-
-                if ($config.minrating -ge 1 -and (-not (Test-Path -Path $destinationFile) -or $config.overwrite)) {
-                    $fileItem = $ratingfolder.ParseName((Split-Path $file -Leaf))
-                    $rating = $ratingfolder.GetDetailsOf($fileItem, 19) -replace '[^\d]', ''
+                if ($fileCount -eq 0) {
+                    $syncHash.LogMessages.Add("No eligible files found in the source directory.`r`n")
+                    return
                 }
 
-                $xmpfile = [System.IO.Path]::ChangeExtension($file.FullName, "xmp")
-                if (-not $rating -and $config.minrating -ge 1 -and (Test-Path -Path $xmpfile)) {
-                    $xmlContent = Get-Content -Path $xmpfile -Raw
-                    $xmlContent -match 'xmp:Rating="(\d+)"'
-                    $rating = $matches[1]
+                $syncHash.LogMessages.Add("Starting copy...`r`n")
+                Start-Sleep -Milliseconds 200
+                $copyStartTime = Get-Date
+                $totalFiles = $fileCount
+                $filesCopied = 0
+                $destinationRoot = $destinationPath
+                $hashFailFiles = @()
+
+                $skipFileCount = 0
+                $copyFileCount = 0
+
+                if ($config.minrating -ge 1) {
+                    $shell = New-Object -ComObject Shell.Application
+                    $ratingFolder = $shell.NameSpace($sourcePath)
                 }
+                
+                foreach ($file in $files) {
+                    if ($syncHash.Cancel) {
+                        $syncHash.LogMessages.Add("Operation canceled.`r`n")
+                        break
+                    }
+                    
+                    # Extract the creation date of the file
+                    if ($config.datetimestring) { 
+                        $creationDate = $file.CreationTime.ToString($config.datetimestring) 
+                    }
 
-                if (-not $rating -and $config.minrating -ge 1) {
-                    $rating = 0
-                }
+                    # Construct the full path
+                    $childPath = $config.folderprefix + $creationDate + $config.folderpostfix
 
-                if (($rating -ge $config.minrating -or $config.minrating -eq 0) -and (-not (Test-Path -Path $destinationFile) -or $config.overwrite)) {
-                    try {
+                    # Construct the destination folder path
+                    $destinationPath = Join-Path -Path $destinationRoot -ChildPath $childPath
 
-                        # Create the folder if it does not exists
-                        if (-not (Test-Path -Path $destinationPath)) {
-                            New-Item -ItemType Directory -Path $destinationPath | Out-Null
+                    # Construct the full file Path
+                    $destinationFile = Join-Path -Path $destinationPath -ChildPath $file.Name
+
+                    if ($config.minrating -ge 1 -and (-not (Test-Path -Path $destinationFile) -or $config.overwrite)) {
+                        $fileItem = $ratingfolder.ParseName((Split-Path $file -Leaf))
+                        $rating = $ratingfolder.GetDetailsOf($fileItem, 19) -replace '[^\d]', ''
+                    }
+
+                    $xmpfile = [System.IO.Path]::ChangeExtension($file.FullName, "xmp")
+                    if (-not $rating -and $config.minrating -ge 1 -and (Test-Path -Path $xmpfile)) {
+                        $xmlContent = Get-Content -Path $xmpfile -Raw
+                        $xmlContent -match 'xmp:Rating="(\d+)"'
+                        $rating = $matches[1]
+                    }
+
+                    if (-not $rating -and $config.minrating -ge 1) {
+                        $rating = 0
+                    }
+
+                    if (($rating -ge $config.minrating -or $config.minrating -eq 0) -and (-not (Test-Path -Path $destinationFile) -or ($config.overwrite -and -not $clone))) {
+                        try {
+
+                            # Create the folder if it does not exists
+                            if (-not (Test-Path -Path $destinationPath)) {
+                                New-Item -ItemType Directory -Path $destinationPath | Out-Null
+                                $syncHash.LogMessages.Add("Created new folder $destinationPath`r`n")
+                            }
+
+                            # Copy file
+                            Copy-Item -Path $file.FullName -Destination $destinationFile -Force
+                            
+                            # Preserve the timestamps
+                            $destinationFileInfo = Get-Item -Path $destinationFile
+                            $destinationFileInfo.CreationTime = $file.CreationTime
+                            $destinationFileInfo.LastWriteTime = $file.LastWriteTime
+
+                            $filesCopied++
+                            $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
+                            $progressPercentage = "{0:n1}" -f $progressPercentage
+
+                            # Check copy integrity SHA256
+                            $hashCheck = $true
+                            if ($config.checkhash) {
+                                $sourceFileHash = (Get-FileHash -Path $file.FullName -Algorithm SHA256).Hash
+                                $destinationFileHash = (Get-FileHash -Path $destinationFile -Algorithm SHA256).Hash
+                                $hashCheck = ($sourceFileHash -eq $destinationFileHash)
+                                $syncHash.LogMessages.Add("Copied $($file.FullName) to $destinationFile ($progressPercentage % complete, SHA256 match $hashCheck)`r`n")
+                            }
+                            else {
+                                $syncHash.LogMessages.Add("Copied $($file.FullName) to $destinationFile ($progressPercentage % complete)`r`n")
+                            }
+
+                            if (-not $hashCheck) {
+                                $hashFailFiles += $destinationFile
+                            }
+
+                            autoRemove -AutoRemove $autoremove -DestinationFile $destinationFile -HashCheck $hashCheck
+                            $copyFileCount++
                         }
-
-                        # Copy file
-                        Copy-Item -Path $file.FullName -Destination $destinationFile -Force
-
-                        # Preserve the timestamps
-                        $destinationFileInfo = Get-Item -Path $destinationFile
-                        $destinationFileInfo.CreationTime = $file.CreationTime
-                        $destinationFileInfo.LastWriteTime = $file.LastWriteTime
-
+                        catch {
+                            $syncHash.LogMessages.Add("Error while processing $($file): $($_.Exception.Message)`r`n")
+                        }
+                    }
+                    elseif ($clone -and (Test-Path -Path $destinationFile)) {
+                        $hashCheck = ((Get-FileHash -Path $file.FullName -Algorithm SHA256).Hash -eq (Get-FileHash -Path $destinationFile -Algorithm SHA256).Hash)
+                        $skipFilecount++
                         $filesCopied++
                         $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
                         $progressPercentage = "{0:n1}" -f $progressPercentage
-
-                        # Check copy integrity SHA256
-                        $hashCheck = $true
-                        if ($config.checkhash) {
-                            $sourceFileHash = (Get-FileHash -Path $file.FullName -Algorithm SHA256).Hash
-                            $destinationFileHash = (Get-FileHash -Path $destinationFile -Algorithm SHA256).Hash
-                            $hashCheck = ($sourceFileHash -eq $destinationFileHash)
-                            $syncHash.LogMessages.Add("Copied $($file.FullName) to $destinationFile ($progressPercentage % complete, SHA256 match $hashCheck)`r`n")
-                        } 
-                        else {
-                            $syncHash.LogMessages.Add("Copied $($file.FullName) to $destinationFile ($progressPercentage % complete)`r`n")
-                        }
-
                         if (-not $hashCheck) {
-                            $hashFailFiles += $destinationFile
+                            $syncHash.LogMessages.Add("$($file.FullName) exists, probably not a clone of $destinationFile, did not replace ($progressPercentage % complete, SHA256 match $hashCheck)`r`n")
                         }
-
-                        if ($autoremove -and (Test-Path $destinationFile) -and $hashCheck) {
-                            Remove-Item -Path $file.FullName
-                            $syncHash.LogMessages.Add("Removed file $($file.FullName)`r`n")
+                        if ($hashCheck) {
+                            $syncHash.LogMessages.Add("$($file.FullName) is a clone of already copied $destinationFile, did not replace ($progressPercentage % complete, SHA256 match $hashCheck)`r`n")
+                            autoRemove -AutoRemove $autoremove -DestinationFile $destinationFile -HashCheck $hashCheck
                         }
-                        $copyFileCount++
                     }
-                    catch {
-                        $syncHash.LogMessages.Add("Error while processing $($file): $($_.Exception.Message)`r`n")
+                    elseif ($config.minrating -ne 0 -and $rating -lt $config.minrating -and (Test-Path -Path $destinationFile) -and $config.overwrite) {
+                        $skipFilecount++
+                        $filesCopied++
+                        $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
+                        $progressPercentage = "{0:n1}" -f $progressPercentage
+                        $syncHash.LogMessages.Add("$($file.FullName) not overwritten, too low($rating) rating. ($progressPercentage % complete)`r`n")
                     }
-                }
-                elseif ($config.minrating -ne 0 -and $rating -lt $config.minrating -and (Test-Path -Path $destinationFile) -and $config.overwrite) {
-                    $skipFilecount++
-                    $filesCopied++
-                    $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
-                    $progressPercentage = "{0:n1}" -f $progressPercentage
-                    $syncHash.LogMessages.Add("$($file.FullName) not overwritten, too low($rating) rating. ($progressPercentage % complete)`r`n")
-                }
-                elseif ($config.minrating -ne 0 -and $rating -lt $config.minrating -and -not (Test-Path -Path $destinationFile)) {
-                    $skipFilecount++
-                    $filesCopied++
-                    $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
-                    $progressPercentage = "{0:n1}" -f $progressPercentage
-                    $syncHash.LogMessages.Add("$($file.FullName) not copied, too low($rating) rating. ($progressPercentage % complete)`r`n")
-                }
-                else {
-                    $skipFilecount++
-                    $filesCopied++
-                    $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
-                    $progressPercentage = "{0:n1}" -f $progressPercentage
-                    $syncHash.LogMessages.Add("$($destinationFile) exists, not replaced. ($progressPercentage % complete)`r`n")
-                }
-            }
-
-            $copyCompleted = $true
-            if (-not $syncHash.Cancel) {
-                $copyEndTime = Get-Date
-                $elapsedTime = $copyEndTime - $copyStartTime
-                $elapsedTimeInSeconds = [math]::Round($elapsedTime.TotalSeconds, 0)
-                Write-Output "Elapsed time: $elapsedTimeInSeconds seconds"
-                $syncHash.LogMessages.Add("$copyFileCount files copied, $skipFilecount skipped in $($elapsedTimeInSeconds) seconds`r`n")
-            }
-
-            $verifyHashFailDelete = $null
-            if ($hashFailFiles -and $config.checkhash) {
-                $syncHash.LogMessages.Add("Following files($($hashFailFiles.Count)) failed the hash check and their source has not been removed:`r`n")
-                foreach ($file in $hashFailFiles) {
-                    $syncHash.LogMessages.Add("$($file)`r`n")
-                }
-                $verifyHashFailDelete = [System.Windows.Forms.MessageBox]::Show("Do you want to delete the files that failed the hash check?`r`n", "Delete confirmation", [System.Windows.Forms.MessageBoxButtons]::YesNo)
-            }
-
-            if ($verifyHashFailDelete -eq "Yes") {
-                foreach ($file in $hashFailFiles) {
-                    try {
-                        Remove-Item -Path $file
-                        $syncHash.LogMessages.Add("Deleted $file`r`n")
+                    elseif ($config.minrating -ne 0 -and $rating -lt $config.minrating -and -not (Test-Path -Path $destinationFile)) {
+                        $skipFilecount++
+                        $filesCopied++
+                        $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
+                        $progressPercentage = "{0:n1}" -f $progressPercentage
+                        $syncHash.LogMessages.Add("$($file.FullName) not copied, too low($rating) rating. ($progressPercentage % complete)`r`n")
                     }
-                    catch {
-                        $syncHash.LogMessages.Add("Failed to delete $file`r`n")
+                    else {
+                        $skipFilecount++
+                        $filesCopied++
+                        $progressPercentage = [Math]::Round(($filesCopied / $totalFiles) * 100, 1)
+                        $progressPercentage = "{0:n1}" -f $progressPercentage
+                        $syncHash.LogMessages.Add("$($destinationFile) exists, not replaced. ($progressPercentage % complete)`r`n")
                     }
                 }
-            }
 
-            $verifyFormat = $null
-            if ($format -and $copyCompleted -and $config.formatprompt) {
-                $verifyFormat = [System.Windows.Forms.MessageBox]::Show("This will format $driveDescription to $format`r`nDo you want to continue?", "Format confirmation", [System.Windows.Forms.MessageBoxButtons]::YesNo)
-                $syncHash.LogMessages.Add("$verifyFormat`r`n")
-            }
-            elseif ($format -and $copyCompleted -and -not $config.formatprompt) {
-                FormatDrive
-            }
+                $copyCompleted = $true
+                if (-not $syncHash.Cancel) {
+                    $copyEndTime = Get-Date
+                    $elapsedTime = $copyEndTime - $copyStartTime
+                    $elapsedTimeInSeconds = [math]::Round($elapsedTime.TotalSeconds, 0)
+                    Write-Output "Elapsed time: $elapsedTimeInSeconds seconds"
+                    $syncHash.LogMessages.Add("$copyFileCount files copied, $skipFilecount skipped in $($elapsedTimeInSeconds) seconds`r`n")
+                }
 
-            if ($format -and $copyCompleted -and $verifyFormat -eq "Yes") {
-                FormatDrive
+                $verifyHashFailDelete = $null
+                if ($hashFailFiles -and $config.checkhash) {
+                    $syncHash.LogMessages.Add("Following files($($hashFailFiles.Count)) failed the hash check and their source has not been removed:`r`n")
+                    foreach ($file in $hashFailFiles) {
+                        $syncHash.LogMessages.Add("$($file)`r`n")
+                    }
+                    $verifyHashFailDelete = [System.Windows.Forms.MessageBox]::Show("Do you want to delete the files that failed the hash check?`r`n", "Delete confirmation", [System.Windows.Forms.MessageBoxButtons]::YesNo)
+                }
+
+                if ($verifyHashFailDelete -eq "Yes") {
+                    foreach ($file in $hashFailFiles) {
+                        try {
+                            Remove-Item -Path $file
+                            $syncHash.LogMessages.Add("Removed file $file`r`n")
+                        }
+                        catch {
+                            $syncHash.LogMessages.Add("Failed to delete $file`r`n")
+                        }
+                    }
+                }
+
+                $verifyFormat = $null
+                if ($format -and $copyCompleted -and $config.formatprompt -and -not $hashFailFiles) {
+                    $verifyFormat = [System.Windows.Forms.MessageBox]::Show("This will format $driveDescription to $format`r`nDo you want to continue?", "Format confirmation", [System.Windows.Forms.MessageBoxButtons]::YesNo)
+                    $syncHash.LogMessages.Add("$verifyFormat`r`n")
+                }
+                elseif ($format -and $copyCompleted -and -not $config.formatprompt -and -not $hashFailFiles) {
+                    FormatDrive -Drive "$drive"
+                }
+
+                if ($format -and $copyCompleted -and $hashFailFiles) {
+                    $verifyFormat = [System.Windows.Forms.MessageBox]::Show("WARNING: SOME FILES FAILED THE HASH CHECK!`r`nThis will format $driveDescription to $format`r`nDo you want to continue?", "Format confirmation", [System.Windows.Forms.MessageBoxButtons]::YesNo)
+                    $syncHash.LogMessages.Add("$verifyFormat`r`n")
+                }
+                
+                if ($format -and $copyCompleted -and $verifyFormat -eq "Yes") {
+                    FormatDrive -Drive "$drive"
+                }
+
+
             }
-
-
+            catch {
+                $syncHash.LogMessages.Add("Error: $_`r`n")
+            }
         }
-        catch {
-            $syncHash.LogMessages.Add("Error: $_`r`n")
+
+        doCopy -Drive "$drive" -SourcePath "$sourcePath"
+        if ($drive2) {
+            doCopy -Drive "$drive2" -SourcePath "$sourcePath2" -Clone $clone
         }
     }
 
-
     # Create a PowerShell instance and add the script block to it
-    $powerShell = [powershell]::Create().AddScript($scriptBlock).AddArgument($syncHash).AddArgument($sourcePath).AddArgument($destinationPath).AddArgument($config).AddArgument($autoremove).AddArgument($format).AddArgument($drive).AddArgument($driveDescription)
+    $powerShell = [powershell]::Create().AddScript($scriptBlock).AddArgument($syncHash).AddArgument($sourcePath).AddArgument($destinationPath).AddArgument($config).AddArgument($autoremove).AddArgument($format).AddArgument($drive).AddArgument($driveDescription).AddArgument($sourcePath2).AddArgument($drive2).AddArgument($clone)
 
     # Associate the runspace pool with the PowerShell instance
     $powerShell.RunspacePool = $runspacePool
@@ -415,7 +482,7 @@ function SettingsForm {
     $settingsForm = New-Object System.Windows.Forms.Form
     $settingsForm.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon("assets\cameracopy.ico")
     $settingsForm.Text = "Configuration"
-    $settingsForm.Size = New-Object System.Drawing.Size(350, 580)
+    $settingsForm.Size = New-Object System.Drawing.Size(350, 610)
     $settingsForm.StartPosition = "CenterScreen"
     $settingsForm.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
 
@@ -518,7 +585,6 @@ function SettingsForm {
 
     # Display form
     $settingsForm.ShowDialog()
-
 }
 
 
@@ -531,16 +597,15 @@ function Main {
     # Create the form
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "CameraCopy " + $version
-    $form.Size = New-Object System.Drawing.Size(305, 200)
+    $form.Size = New-Object System.Drawing.Size(305, 240)
     $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
     $form.StartPosition = "CenterScreen"
     $form.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon("assets\cameracopy.ico")
 
-    # Create a ComboBox for drive selection
     $label = New-Object System.Windows.Forms.Label
-    $label.Text = "Source Drive:"
-    $label.Size = New-Object System.Drawing.Size(175, 20)
-    $label.Location = New-Object System.Drawing.Point(10, 20)
+    $label.Text = "Primary Volume:"
+    $label.Size = New-Object System.Drawing.Size(175, 13)
+    $label.Location = New-Object System.Drawing.Point(10, 13)
     $form.Controls.Add($label)
 
     $filterWords = @($config.includeddevices)
@@ -548,7 +613,7 @@ function Main {
     $comboBox = New-Object System.Windows.Forms.ComboBox
     $comboBox.Size = New-Object System.Drawing.Size(252, 20)
     $comboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
-    $comboBox.Location = New-Object System.Drawing.Point(10, 40)
+    $comboBox.Location = New-Object System.Drawing.Point(10, 31)
 
     foreach ($drive in $drives) {
         if ($filterWords.Count -eq 0 -or ($filterWords | Where-Object { $drive -match $_ }).Count -gt 0) {
@@ -562,13 +627,44 @@ function Main {
     $comboBox.SelectedIndex = $config.defaultdevice
     $form.Controls.Add($comboBox)
 
+    
+
+    $label = New-Object System.Windows.Forms.Label
+    $label.Text = "Secondary Volume:"
+    #$label.Size = New-Object System.Drawing.Size(175, 13)
+    $label.AutoSize = $true
+    $label.Location = New-Object System.Drawing.Point(10, 63)
+    $form.Controls.Add($label)
+
+    $cloneComboBox = New-Object System.Windows.Forms.ComboBox
+    $cloneComboBox.Size = New-Object System.Drawing.Size(252, 20)
+    $cloneComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+    $cloneComboBox.Location = New-Object System.Drawing.Point(10, 80)
+
+    $cloneComboBox.Items.Add("None")
+    foreach ($drive in $drives) {
+        if ($filterWords.Count -eq 0 -or ($filterWords | Where-Object { $drive -match $_ }).Count -gt 0) {
+            $cloneComboBox.Items.Add($drive)
+        }
+    }
+
+    $cloneComboBox.SelectedIndex = $config.defaultdevice2
+    $form.Controls.Add($cloneComboBox)
+
+    $cloneCheckBox = New-Object System.Windows.Forms.CheckBox
+    $cloneCheckBox.TextAlign = "MiddleLeft"
+    $cloneCheckBox.Text = "Is clone"
+    $cloneCheckBox.AutoSize = $true
+    $cloneCheckBox.Location = New-Object System.Drawing.Point(117, 62)
+    $form.Controls.Add($cloneCheckBox)
+
 
     $saveClose = $false
     # refresh icon
     $refreshPictureBox = New-Object System.Windows.Forms.PictureBox
     $refreshPictureBox.Size = New-Object System.Drawing.Size(20, 20)
     $refreshPictureBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
-    $refreshPictureBox.Location = New-Object System.Drawing.Point(265, 40)
+    $refreshPictureBox.Location = New-Object System.Drawing.Point(265, 57)
     $refreshPictureBox.Image = [System.Drawing.Image]::FromFile("assets/refresh.png")
     $refreshPictureBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
 
@@ -583,27 +679,27 @@ function Main {
     # Format checkboxes
     $label = New-Object System.Windows.Forms.Label
     $label.Text = "Format:"
-    $label.Location = New-Object System.Drawing.Point(10, 70)
+    $label.Location = New-Object System.Drawing.Point(10, 110)
     $label.AutoSize = $true
     $form.Controls.Add($label)
 
     $checkboxFAT32 = New-Object System.Windows.Forms.CheckBox
     $checkboxFAT32.Text = "FAT32"
-    $checkboxFAT32.Location = New-Object System.Drawing.Point(70, 70)
+    $checkboxFAT32.Location = New-Object System.Drawing.Point(70, 110)
     $checkboxFAT32.AutoSize = $true
     $form.Controls.Add($checkboxFAT32)
     if ($config.autoformat -eq "FAT32") { $checkboxFAT32.Checked = $true }
 
     $checkboxExFAT = New-Object System.Windows.Forms.CheckBox
     $checkboxExFAT.Text = "exFAT"
-    $checkboxExFAT.Location = New-Object System.Drawing.Point(130, 70)
+    $checkboxExFAT.Location = New-Object System.Drawing.Point(130, 110)
     $checkboxExFAT.AutoSize = $true
     $form.Controls.Add($checkboxExFAT)
     if ($config.autoformat -eq "exFAT") { $checkboxExFAT.Checked = $true }
 
     $checkboxNTFS = New-Object System.Windows.Forms.CheckBox
     $checkboxNTFS.Text = "NTFS"
-    $checkboxNTFS.Location = New-Object System.Drawing.Point(190, 70)
+    $checkboxNTFS.Location = New-Object System.Drawing.Point(190, 110)
     $checkboxNTFS.AutoSize = $true
     $form.Controls.Add($checkboxNTFS)
     if ($config.autoformat -eq "NTFS") { $checkboxNTFS.Checked = $true }
@@ -633,7 +729,7 @@ function Main {
     $checkbox.Text = "Remove successfully copied files from source"
     $checkbox.TextAlign = "MiddleLeft"
     $checkbox.AutoSize = $true
-    $checkBox.Location = New-Object System.Drawing.Point(12, 93)
+    $checkBox.Location = New-Object System.Drawing.Point(12, 133)
     $form.Controls.Add($checkBox)
 
 
@@ -641,32 +737,28 @@ function Main {
     $button = New-Object System.Windows.Forms.Button
     $button.Text = "Start Copy"
     $button.Size = New-Object System.Drawing.Size(100, 30)
-    $button.Location = New-Object System.Drawing.Point(10, 123)
+    $button.Location = New-Object System.Drawing.Point(10, 163)
     $form.Controls.Add($button)
 
     $button.Add_Click({
-            $selectedDrive = $comboBox.SelectedItem -split ':'
+
             if ($selectedDrive -eq "No drives found.") {
                 [System.Windows.Forms.MessageBox]::Show("No drives found.")
                 return
             }
-
-            if ($selectedDrive) {
-                $drive = "$($selectedDrive[0])"
-
-                $sourcePath = "${drive}:\$($config.source)"
-                $destinationPath = $config.destination
-                $format = $null
-                if ($checkboxFAT32.Checked) { $format = "FAT32" }
-                if ($checkboxExFAT.Checked) { $format = "exFAT" }
-                if ($checkboxNTFS.Checked) { $format = "NTFS" }
-
-                # Start copying removing formatting etc
-                CopyFiles -SourcePath "$sourcePath" -DestinationPath "$destinationPath" -Autoremove $checkBox.Checked -Format "$format" -Drive "$drive" -DriveDescription "$($comboBox.SelectedItem)"
+    
+            if ("$($comboBox.SelectedItem)" -eq "$($cloneComboBox.SelectedItem)") {
+                [System.Windows.Forms.MessageBox]::Show("Primary and Secondary volumes can't be the same.")
+                return
             }
-            else {
-                [System.Windows.Forms.MessageBox]::Show("Please select a drive.")
+
+            if ("$($cloneComboBox.SelectedItem)" -ne "None") {
+                $selectedDrives = "$($comboBox.SelectedItem)|||$($cloneComboBox.SelectedItem)"
+                preCopy -selectedDrive "$selectedDrives"
+                return
             }
+
+            preCopy -selectedDrive "$($comboBox.SelectedItem)"
 
         })
 

@@ -3,7 +3,8 @@
     "destination":  "D:\\Pictures",
     "includedfiles":  [
                           "C*.mp4",
-                          "DSC*.ARW"
+                          "DSC*.ARW",
+                          "*.jpg"
                       ],
     "excludedfiles":  [
                           "C*T*.JPG",
@@ -11,17 +12,19 @@
                       ],
     "includeddevices":  [
                             "Sony",
-                            "DataTraveler"
+                            "Data",
+                            "Generic"
                         ],
     "folderprefix":  "prefix_",
     "datetimestring":  "yyyy-MM-dd",
     "folderpostfix":  "_postfix",
     "defaultdevice":  "0",
+    "defaultdevice2":  "0",
     "minrating":  "0",
     "autoformat":  "exFAT",
     "autoremove":  false,
     "formatprompt":  true,
     "checkhash":  true,
     "overwrite":  false,
-    "fixsonytimestamps":  true
+    "fixsonytimestamps":  false
 }

@@ -29,7 +29,8 @@ Edit cameracopy.json by hand or click the cogwheel icon.
     "folderprefix": "prefix_",          <- Destination folder prefix
     "datetimestring": "yyyy-MM-dd",     <- Powershell datetime string used in destination folder. yyyy-MM-dd meaning 2024-01-01
     "folderpostfix": "_postfix",        <- Destination folder postfix.
-    "defaultdevice": "0",               <- If you know your device is always e.g. second on the list set to 1
+    "defaultdevice": "0",               <- Default primary device, if you know your device is always e.g. second on the list set to 1
+    "defaultdevice2": "0",              <- Default secondary device for multicard copying. 0 is always None
     "minrating":  "0",                  <- Sets a minimum metadata Rating for files. Does not copy if no rating is found. 0 is off
     "autoformat": "exFAT",              <- Select format filesystem on start. Can be empty or any of FAT32, exFAT, NTFS
     "autoremove": false,                <- Select remove files after copying on start
@@ -51,3 +52,7 @@ Edit cameracopy.json by hand or click the cogwheel icon.
 * If files fail the hash check, you will be prompted to delete the files.
 * minrating 0< first checks the file metadata for Rating, if not found it looks it from $filename.xmp file. Files without rating are rated 0.
 * Icons might be a bit off if you covert the script to exe with ps2exe.
+* When format prompt is disabled, but files have failed hash check, a format prompt will be displayed.
+* Primary and secondary volumes are both treated as separate volumes as default. CameraCopy will run the same copy/remove/format etc for both volumes. Useful if you have a camera with two memory card slots and want to copy files from both. Format prompt (unless disabled) will be displayed between volumes.
+* About the "Is clone" checkbox: CameraCopy will assume both copy sources are identical and will check hash of existing files and not replace them. It will normally copy files that are not present in the destination folder. Mostly usable if you want to autoremove the copied files from the second memory card as well. It will only remove the files that has a matching sha256 hash as the file that is present in the destination.
+* If you try to copy existing files to disk, have Is cloned enabled, overwrite disabled and autoremove enabled, CameraCopy will not replace any existing files, but will only remove the existing files from the second card if they have a matching sha256 hash. This should not be an issue in any real life scenarios, unless you like to spam copy button for fun try out different options.
