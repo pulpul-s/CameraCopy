@@ -17,7 +17,7 @@
     "datetimestring":  "yyyy-MM-dd",
     "folderpostfix":  "_postfix",
     "defaultdevice":  "0",
-    "defaultdevice2":  "2",
+    "defaultdevice2":  "0",
     "minrating":  "0",
     "autoformat":  "exFAT",
     "autoremove":  false,

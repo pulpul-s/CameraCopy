@@ -649,7 +649,12 @@ function Main {
         }
     }
 
-    $cloneComboBox.SelectedIndex = $config.defaultdevice2
+    if (($cloneComboBox.Items.Count - 1) -ge $config.defaultdevice2) {
+        $cloneComboBox.SelectedIndex = $config.defaultdevice2
+    }
+    else {
+        $cloneComboBox.SelectedIndex = 0
+    }
     $form.Controls.Add($cloneComboBox)
 
     $cloneCheckBox = New-Object System.Windows.Forms.CheckBox
@@ -743,7 +748,7 @@ function Main {
 
     $button.Add_Click({
 
-            if ($selectedDrive -eq "No drives found.") {
+            if ("$($comboBox.SelectedItem)" -eq "No drives found.") {
                 [System.Windows.Forms.MessageBox]::Show("No drives found.")
                 return
             }
