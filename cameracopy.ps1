@@ -625,7 +625,13 @@ function Main {
     if ($comboBox.Items.Count -eq 0) {
         $comboBox.Items.Add("No drives found.")
     }
-    $comboBox.SelectedIndex = $config.defaultdevice
+    
+    if (($comboBox.Items.Count - 1) -ge $config.defaultdevice2) {
+        $comboBox.SelectedIndex = $config.defaultdevice2
+    }
+    else {
+        $comboBox.SelectedIndex = 0
+    }
     $form.Controls.Add($comboBox)
 
     
