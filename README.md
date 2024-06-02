@@ -5,7 +5,7 @@ Scans the system for available volumes, filters the volume list by user keywords
 
 <img src="./screenshots/1.png" alt="Main window"><br>
 <img src="./screenshots/3.png" alt="Configuration window"><br>
-<img src="./screenshots/2.png" width="500px" alt="Copy window and format confirmation">
+<img src="./screenshots/2.png" alt="Copy window and format confirmation">
 
 ## Configuration
 
