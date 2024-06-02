@@ -141,7 +141,7 @@ function CopyFiles {
             try {
                 $syncHash.LogMessages.Add("Formatting volume ${drive}: to $format`r`n")
                 Format-Volume -DriveLetter $drive -FileSystem $format -Confirm:$false
-                $syncHash.LogMessages.Add("Volume ${drive}: formatted successfully as $format.")
+                $syncHash.LogMessages.Add("Volume ${drive}: formatted successfully as $format.`r`n")
             }
             catch {
                 $syncHash.LogMessages.Add("Failed to format the volume: ${drive}:")
@@ -340,7 +340,7 @@ function CopyFiles {
                             $syncHash.LogMessages.Add("$($file.FullName) exists, probably not a clone of $destinationFile, did not replace ($progressPercentage % complete, SHA256 match $hashCheck)`r`n")
                         }
                         if ($hashCheck) {
-                            $syncHash.LogMessages.Add("$($file.FullName) is a clone of already copied $destinationFile, did not replace ($progressPercentage % complete, SHA256 match $hashCheck)`r`n")
+                            $syncHash.LogMessages.Add("$($file.FullName) is a clone of already existing $destinationFile, did not replace ($progressPercentage % complete, SHA256 match $hashCheck)`r`n")
                             autoRemove -AutoRemove $autoremove -DestinationFile $destinationFile -HashCheck $hashCheck
                         }
                     }
