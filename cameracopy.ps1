@@ -85,7 +85,7 @@ function preCopy {
 
 
     # Start copying removing formatting etc
-    CopyFiles -SourcePath "$sourcePath" -SourcePath2 "$sourcePath2" -DestinationPath "$destinationPath" -Autoremove $checkBox.Checked -Format "$format" -Drive "$($drive[0])" -Drive2 "$($drive2[0])" -DriveDescription "$($comboBox.SelectedItem)" -Clone $cloneCheckBox.Checked
+    CopyFiles -SourcePath "$sourcePath" -SourcePath2 "$sourcePath2" -DestinationPath "$destinationPath" -Autoremove $checkBox.Checked -Format "$format" -Drive "$($drive[0])" -Drive2 "$($drive2[0])" -DriveDescription "$($comboBox.SelectedItem)" -DriveDescription2 "$($cloneComboBox.SelectedItem)" -Clone $cloneCheckBox.Checked
 
 }
 
@@ -100,6 +100,7 @@ function CopyFiles {
         [string]$drive,
         [string]$drive2,
         [string]$driveDescription,
+        [string]$driveDescription2,
         [bool]$clone
     )
 
@@ -132,7 +133,7 @@ function CopyFiles {
 
     # Define the script block for the runspace
     $scriptBlock = {
-        param($syncHash, $sourcePath, $destinationPath, $config, $autoremove, $format, $drive, $driveDescription, $sourcePath2, $drive2, $clone)
+        param($syncHash, $sourcePath, $destinationPath, $config, $autoremove, $format, $drive, $driveDescription, $driveDescription2, $sourcePath2, $drive2, $clone)
         
         function FormatDrive {
             param($drive)
@@ -204,7 +205,7 @@ function CopyFiles {
         }
     
         function doCopy {
-            param($drive, $sourcePath, $clone)
+            param($drive, $sourcePath, $driveDescription, $clone)
             
             try {
                 $files = Get-ChildItem -Path $sourcePath -File -Recurse | Where-Object {
@@ -421,14 +422,14 @@ function CopyFiles {
             }
         }
 
-        doCopy -Drive "$drive" -SourcePath "$sourcePath"
+        doCopy -Drive "$drive" -SourcePath "$sourcePath" -DriveDescription $driveDescription
         if ($drive2) {
-            doCopy -Drive "$drive2" -SourcePath "$sourcePath2" -Clone $clone
+            doCopy -Drive "$drive2" -SourcePath "$sourcePath2" -DriveDescription $driveDescription2 -Clone $clone
         }
     }
 
     # Create a PowerShell instance and add the script block to it
-    $powerShell = [powershell]::Create().AddScript($scriptBlock).AddArgument($syncHash).AddArgument($sourcePath).AddArgument($destinationPath).AddArgument($config).AddArgument($autoremove).AddArgument($format).AddArgument($drive).AddArgument($driveDescription).AddArgument($sourcePath2).AddArgument($drive2).AddArgument($clone)
+    $powerShell = [powershell]::Create().AddScript($scriptBlock).AddArgument($syncHash).AddArgument($sourcePath).AddArgument($destinationPath).AddArgument($config).AddArgument($autoremove).AddArgument($format).AddArgument($drive).AddArgument($driveDescription).AddArgument($driveDescription2).AddArgument($sourcePath2).AddArgument($drive2).AddArgument($clone)
 
     # Associate the runspace pool with the PowerShell instance
     $powerShell.RunspacePool = $runspacePool
