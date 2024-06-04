@@ -11,7 +11,9 @@
                           "MEDIAPRO.XML"
                       ],
     "includeddevices":  [
-                            "Sony"
+                            "Sony",
+                            "Data",
+                            "Generic"
                         ],
     "folderprefix":  "prefix_",
     "datetimestring":  "yyyy-MM-dd",

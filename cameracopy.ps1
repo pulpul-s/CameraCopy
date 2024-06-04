@@ -1,5 +1,5 @@
 ﻿# https://github.com/pulpul-s/CameraCopy
-$version = "1.5.0"
+$version = "1.5.1"
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -173,8 +173,8 @@ function CopyFiles {
                 $xmlContent = Get-Content $xmlFile
                 $creationDateLine = $xmlContent | Where-Object { $_ -match '<CreationDate value="([^"]+)"' }
                 $creationTimestamp = if ($creationDateLine) {
-                    $matches = [regex]::Matches($creationDateLine, 'value="([^"]+)"')
-                    $matches.Groups[1].Value
+                    $match = [regex]::Matches($creationDateLine, 'value="([^"]+)"')
+                    $match.Groups[1].Value
                 }
         
                 if (-not $creationTimestamp) {
@@ -231,11 +231,11 @@ function CopyFiles {
 
                 if ($fileCount -eq 0) {
                     $syncHash.LogMessages.Add("No eligible files found in the source directory.`r`n")
-                    return
+                    $hashStatus = $false
+                    return $hashStatus
                 }
 
                 $syncHash.LogMessages.Add("Starting copy...`r`n")
-                Start-Sleep -Milliseconds 200
                 $copyStartTime = Get-Date
                 $totalFiles = $fileCount
                 $filesCopied = 0
@@ -397,34 +397,50 @@ function CopyFiles {
                     }
                 }
 
-                $verifyFormat = $null
-                if ($format -and $copyCompleted -and $config.formatprompt -and -not $hashFailFiles) {
-                    $verifyFormat = [System.Windows.Forms.MessageBox]::Show("This will format $driveDescription to $format`r`nDo you want to continue?", "Format confirmation", [System.Windows.Forms.MessageBoxButtons]::YesNo)
-                    $syncHash.LogMessages.Add("$verifyFormat`r`n")
-                }
-                elseif ($format -and $copyCompleted -and -not $config.formatprompt -and -not $hashFailFiles) {
-                    FormatDrive -Drive "$drive"
-                }
-
-                if ($format -and $copyCompleted -and $hashFailFiles) {
-                    $verifyFormat = [System.Windows.Forms.MessageBox]::Show("WARNING: SOME FILES FAILED THE HASH CHECK!`r`nThis will format $driveDescription to $format`r`nDo you want to continue?", "Format confirmation", [System.Windows.Forms.MessageBoxButtons]::YesNo)
-                    $syncHash.LogMessages.Add("$verifyFormat`r`n")
-                }
-                
-                if ($format -and $copyCompleted -and $verifyFormat -eq "Yes") {
-                    FormatDrive -Drive "$drive"
-                }
-
-
             }
             catch {
                 $syncHash.LogMessages.Add("Error: $_`r`n")
             }
+
+            $hashStatus = $false
+            if ($hashFailFiles) {
+                $hashStatus = $true
+            }
+            return $hashStatus
         }
 
-        doCopy -Drive "$drive" -SourcePath "$sourcePath" -DriveDescription $driveDescription
+        function verifyFormat {
+            param($drive, $driveDescription, $hashFailFiles)
+
+            $verifyFormat = $null
+            if ($format -and $config.formatprompt -and -not $hashFailFiles) {
+                $verifyFormat = [System.Windows.Forms.MessageBox]::Show("This will format $driveDescription to $format`r`nDo you want to continue?", "Format confirmation", [System.Windows.Forms.MessageBoxButtons]::YesNo)
+                $syncHash.LogMessages.Add("$verifyFormat`r`n")
+            }
+            elseif ($format -and -not $config.formatprompt -and -not $hashFailFiles) {
+                FormatDrive -Drive "$drive"
+            }
+
+            if ($format -and $hashFailFiles) {
+                $verifyFormat = [System.Windows.Forms.MessageBox]::Show("WARNING: SOME FILES FAILED THE HASH CHECK!`r`nThis will format $driveDescription to $format`r`nDo you want to continue?", "Format confirmation", [System.Windows.Forms.MessageBoxButtons]::YesNo)
+                $syncHash.LogMessages.Add("$verifyFormat`r`n")
+            }
+            
+            if ($format -and $verifyFormat -eq "Yes") {
+                FormatDrive -Drive "$drive"
+            }
+        }
+
+        
+        $hashFailStatus = doCopy -Drive "$drive" -SourcePath "$sourcePath" -DriveDescription $driveDescription
+        if (-not $drive2) {
+            verifyFormat -Drive "$drive" -DriveDescription $driveDescription -HashFailFiles $hashFailStatus[-1]
+        }
+
         if ($drive2) {
-            doCopy -Drive "$drive2" -SourcePath "$sourcePath2" -DriveDescription $driveDescription2 -Clone $clone
+            $hashFailStatus2 = doCopy -Drive "$drive2" -SourcePath "$sourcePath2" -DriveDescription $driveDescription2 -Clone $clone
+            verifyFormat -Drive "$drive" -DriveDescription "$driveDescription" -HashFailFiles $hashFailStatus[-1]
+            verifyFormat -Drive "$drive2" -DriveDescription "$driveDescription2" -HashFailFiles $hashFailStatus2[-1]
         }
     }
 
@@ -625,7 +641,7 @@ function Main {
     if ($comboBox.Items.Count -eq 0) {
         $comboBox.Items.Add("No drives found.")
     }
-    
+
     if (($comboBox.Items.Count - 1) -ge $config.defaultdevice2) {
         $comboBox.SelectedIndex = $config.defaultdevice2
     }
