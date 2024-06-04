@@ -422,7 +422,7 @@ function CopyFiles {
             }
 
             if ($format -and $hashFailFiles) {
-                $verifyFormat = [System.Windows.Forms.MessageBox]::Show("<b>WARNING: SOME FILES FAILED THE HASH CHECK!</b>`r`nThis will format $driveDescription to $format`r`nDo you want to continue?", "Format confirmation", [System.Windows.Forms.MessageBoxButtons]::YesNo)
+                $verifyFormat = [System.Windows.Forms.MessageBox]::Show("WARNING: SOME FILES FAILED THE HASH CHECK!`r`nThis will format $driveDescription to $format`r`nDo you want to continue?", "Format confirmation", [System.Windows.Forms.MessageBoxButtons]::YesNo)
                 $syncHash.LogMessages.Add("$verifyFormat`r`n")
             }
             
