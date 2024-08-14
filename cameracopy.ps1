@@ -206,7 +206,7 @@ function CopyFiles {
     
         function doCopy {
             param($drive, $sourcePath, $driveDescription, $clone)
-            
+            $syncHash.LogMessages.Add("Scanning $sourcePath for files...")
             try {
                 $files = Get-ChildItem -Path $sourcePath -File -Recurse | Where-Object {
                     $file = $_
@@ -217,6 +217,8 @@ function CopyFiles {
                     # Include the file only if it matches an inclusion pattern and does not match an exclusion pattern
                 ($matchesIncluded -contains $true) -and ($matchesExcluded -notcontains $true)
                 }
+                $syncHash.LogMessages.Add("`r`n")
+
                 $copyCompleted = $false
                 $fileCount = $files.Count
                 $syncHash.LogMessages.Add("Found $fileCount files in $sourcePath`r`n")
