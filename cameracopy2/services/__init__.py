@@ -1,0 +1,1 @@
+"""CameraCopy services package."""

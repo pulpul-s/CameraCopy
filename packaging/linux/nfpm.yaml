@@ -1,0 +1,128 @@
+# yaml-language-server: $schema=https://nfpm.goreleaser.com/schema.json
+name: cameracopy
+arch: amd64
+platform: linux
+version: ${VERSION}
+version_schema: semver
+release: "1"
+section: graphics
+priority: optional
+maintainer: CameraCopy
+description: |-
+  Copy, verify, review, and safely format camera cards.
+  CameraCopy provides normal and dual-card clone workflows, metadata-based
+  destination folders, ratings, sidecars, SHA-256 verification, and guarded
+  post-copy formatting.
+vendor: CameraCopy
+contents:
+  - src: .build/linux-package/root/cameracopy2/
+    dst: /usr/lib/cameracopy/cameracopy2
+  - src: packaging/linux/cameracopy
+    dst: /usr/bin/cameracopy
+    file_info:
+      mode: 0755
+  - src: packaging/linux/cameracopy.desktop
+    dst: /usr/share/applications/cameracopy.desktop
+    file_info:
+      mode: 0644
+  - src: packaging/linux/icons/hicolor/16x16/apps/cameracopy.png
+    dst: /usr/share/icons/hicolor/16x16/apps/cameracopy.png
+    file_info:
+      mode: 0644
+  - src: packaging/linux/icons/hicolor/22x22/apps/cameracopy.png
+    dst: /usr/share/icons/hicolor/22x22/apps/cameracopy.png
+    file_info:
+      mode: 0644
+  - src: packaging/linux/icons/hicolor/24x24/apps/cameracopy.png
+    dst: /usr/share/icons/hicolor/24x24/apps/cameracopy.png
+    file_info:
+      mode: 0644
+  - src: packaging/linux/icons/hicolor/32x32/apps/cameracopy.png
+    dst: /usr/share/icons/hicolor/32x32/apps/cameracopy.png
+    file_info:
+      mode: 0644
+  - src: packaging/linux/icons/hicolor/48x48/apps/cameracopy.png
+    dst: /usr/share/icons/hicolor/48x48/apps/cameracopy.png
+    file_info:
+      mode: 0644
+  - src: packaging/linux/icons/hicolor/64x64/apps/cameracopy.png
+    dst: /usr/share/icons/hicolor/64x64/apps/cameracopy.png
+    file_info:
+      mode: 0644
+  - src: packaging/linux/icons/hicolor/128x128/apps/cameracopy.png
+    dst: /usr/share/icons/hicolor/128x128/apps/cameracopy.png
+    file_info:
+      mode: 0644
+  - src: packaging/linux/icons/hicolor/256x256/apps/cameracopy.png
+    dst: /usr/share/icons/hicolor/256x256/apps/cameracopy.png
+    file_info:
+      mode: 0644
+  - src: packaging/linux/icons/hicolor/512x512/apps/cameracopy.png
+    dst: /usr/share/icons/hicolor/512x512/apps/cameracopy.png
+    file_info:
+      mode: 0644
+  - src: packaging/linux/icons/hicolor/1024x1024/apps/cameracopy.png
+    dst: /usr/share/icons/hicolor/1024x1024/apps/cameracopy.png
+    file_info:
+      mode: 0644
+  - src: README.md
+    dst: /usr/share/doc/cameracopy/README.md
+    file_info:
+      mode: 0644
+  - src: VERSION
+    dst: /usr/share/doc/cameracopy/VERSION
+    file_info:
+      mode: 0644
+overrides:
+  deb:
+    depends:
+      - python3 (>= 3.11)
+      - python3-pyside6.qtcore (>= 6.7)
+      - python3-pyside6.qtgui (>= 6.7)
+      - python3-pyside6.qtwidgets (>= 6.7)
+      - python3-pyside6.qtdbus (>= 6.7)
+      - python3-psutil
+      - python3-platformdirs
+      - python3-dateutil
+      - python3-pyudev
+      - hicolor-icon-theme
+      - udisks2
+      - util-linux
+      - exfatprogs
+      - dosfstools
+      - e2fsprogs
+  rpm:
+    depends:
+      - python3 >= 3.11
+      - python3-pyside6 >= 6.7
+      - python3-psutil
+      - python3-platformdirs
+      - python3-dateutil
+      - python3-pyudev
+      - hicolor-icon-theme
+      - udisks2
+      - util-linux
+      - exfatprogs
+      - dosfstools
+      - e2fsprogs
+  archlinux:
+    depends:
+      - python>=3.11
+      - pyside6>=6.7
+      - python-psutil
+      - python-platformdirs
+      - python-dateutil
+      - python-pyudev
+      - hicolor-icon-theme
+      - udisks2
+      - util-linux
+      - exfatprogs
+      - dosfstools
+      - e2fsprogs
+rpm:
+  compression: zstd
+deb:
+  compression: xz
+archlinux:
+  pkgbase: cameracopy
+  packager: CameraCopy

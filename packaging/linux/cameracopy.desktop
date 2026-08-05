@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=CameraCopy
+GenericName=Camera media copier
+Comment=Copy and verify camera media
+TryExec=cameracopy
+Exec=cameracopy
+Icon=cameracopy
+Terminal=false
+Categories=Graphics;Photography;Utility;
+Keywords=camera;photo;media;copy;backup;verify;
+StartupNotify=true

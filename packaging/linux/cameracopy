@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+
+# Isolated mode ignores user PYTHONPATH and user-site packages while retaining
+# the distribution-managed system site-packages needed by CameraCopy.
+exec /usr/bin/python3 -I -B -c '
+import sys
+sys.path.insert(0, "/usr/lib/cameracopy")
+from cameracopy2.__main__ import main
+raise SystemExit(main())
+' "$@"

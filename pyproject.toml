@@ -1,0 +1,27 @@
+[project]
+name = "cameracopy"
+version = "2.0.0"
+description = "Cross-platform PySide6 camera card copy tool"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "CameraCopy" }]
+dependencies = [
+  "PySide6>=6.7",
+  "psutil>=5.9",
+  "platformdirs>=4.2",
+  "python-dateutil>=2.9.0.post0",
+  "pyudev>=0.24.4; sys_platform == 'linux'",
+  "pywin32>=306; sys_platform == 'win32'",
+  "WMI>=1.5.1; sys_platform == 'win32'",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-qt>=4.4", "ruff>=0.5"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# Keep CI stable across Ruff releases by declaring the baseline explicitly.
+select = ["E4", "E7", "E9", "F"]
