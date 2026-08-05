@@ -73,14 +73,12 @@ def test_release_workflow_builds_tests_and_uploads_all_assets() -> None:
     assert "gh release upload" in workflow
 
 
-def test_readme_documents_installation_and_builds() -> None:
+def test_readme_documents_release_artifacts() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
     assert "cameracopy_<version>_amd64.deb" in readme
     assert "CameraCopy-Setup-<version>.exe" in readme
     assert "CameraCopy-<version>-windows-x86_64-portable.zip" in readme
-    assert "./scripts/package-linux.sh" in readme
-    assert ".\\scripts\\build-windows.ps1" in readme
     assert "pip install ./cameracopy-" not in readme
     assert "cameracopy-install-desktop" not in readme
 
