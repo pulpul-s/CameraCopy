@@ -487,7 +487,9 @@ class MainWindow(QMainWindow):
         self.second_source_summary_label.set_full_text(
             self._source_summary_text(self.secondary_combo.currentData(), "")
         )
-        self.destination_summary_label.set_full_text(self.config.destination or "Not configured")
+        self.destination_summary_label.set_full_text(
+            str(Path(self.config.destination)) if self.config.destination else "Not configured"
+        )
         self.files_summary_label.set_full_text(self._files_summary_text())
 
     def _source_summary_text(self, volume: object, none_text: str) -> str:
