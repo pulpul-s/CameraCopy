@@ -3,7 +3,11 @@
 CameraCopy is a cross-platform desktop application for copying photos and videos from
 camera cards (and other mounted storage volumes.) to an organized destination folder. It supports
 verified copies, dual-volume clone workflows, metadata-based folders, sidecars, optional source
-cleanup, and guarded post-copy formatting.
+cleanup, and guarded post-copy formatting.<br>
+<img width="652" height="292" alt="{238BE105-6884-4BB6-AAD8-3F434F9CE498}" src="https://github.com/user-attachments/assets/4f594f39-f818-43e5-88bb-38c4f05c657a" /><br>
+<img width="1002" height="672" alt="{B954D231-7E0E-4C66-837E-976557948811}" src="https://github.com/user-attachments/assets/7daa73f8-f75d-4e09-b412-41d9489dd04e" /><br>
+<img width="862" height="712" alt="{F852E701-8BBA-47A0-87B0-D7F5C007A775}" src="https://github.com/user-attachments/assets/1c3a7889-335b-48d0-8621-4e7622d6c648" />
+
 
 ## Features
 
